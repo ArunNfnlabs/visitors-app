@@ -1,5 +1,6 @@
 // src/services/api.ts
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 export interface Visitor {
@@ -9,7 +10,7 @@ export interface Visitor {
     lastSeenTime: string;
 }
 
-const API_BASE_URL = 'https://api.websitechat.in/v1';
+const API_BASE_URL = 'https://api-dev.websitechat.in/v1';
 
 export const getVisitors = async ({
     page = 1,
@@ -25,7 +26,8 @@ export const getVisitors = async ({
     sortOrder?: 'DESC' | 'ASC';
 }): Promise<Visitor[]> => {
     try {
-        const token = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTksImVtYWlsIjoic3VwcG9ydEB3ZWJzaXRlY2hhdC5pbiIsImlhdCI6MTc1MjU4MzI3NSwiZXhwIjoxNzU1MTc1Mjc1fQ.Bl5w7ArWAct3mzlj1EzR2kT6vN1NFgjMG2oLgehkWdg'; // Replace with real token from auth context or storage
+        const token = await AsyncStorage.getItem('USER_TOKEN');
+        console.log(token);
 
         const response = await axios.get(`${API_BASE_URL}/visitors/get-visitors`, {
             params: {
@@ -36,7 +38,7 @@ export const getVisitors = async ({
                 sortOrder,
             },
             headers: {
-                Authorization: token,
+                Authorization: `Bearer ${token}`,
             },
         });
 

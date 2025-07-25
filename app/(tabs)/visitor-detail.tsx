@@ -1,10 +1,12 @@
-import VisitorsListScreen from "@/src/screens/visitorScreen/VisitorsListScreen";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
-import LoginScreen from "../signin";
+import VisitorDetailScreen from '@/src/screens/visitorScreen/VisitorDetailScreen';
+import { useEffect, useState } from 'react';
 
-export default function HomeScreen() {
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, View } from 'react-native';
+
+import LoginScreen from '../signin';
+
+export default function VisitorDetailPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [token, setToken] = useState<string | null>(null);
 
@@ -25,6 +27,5 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  return token ? <VisitorsListScreen /> : <LoginScreen />;
-}
+  return token ? <VisitorDetailScreen /> : <LoginScreen />;
+} 

@@ -1,3 +1,4 @@
+import { getVisitorChat } from '@/src/services/api';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -54,9 +55,7 @@ type Message = {
     avatarUrl?: string;
 };
 
-const API_URL = 'https://api.websitechat.in/v1/visitors/get-visitors-chat?sessionId=152';
-const AUTH_TOKEN =
-    'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTksImVtYWlsIjoic3VwcG9ydEB3ZWJzaXRlY2hhdC5pbiIsImlhdCI6MTc1MjY2NzAxNywiZXhwIjoxNzU1MjU5MDE3fQ.Ars788yRzTaYo6o3f6EGC_7Fq9MjL6dIDFLj96ja-lM';
+const SESSION_ID = '152'; // This should come from navigation params
 
 export default function VisitorDetailScreen() {
     const navigation = useNavigation();
@@ -81,14 +80,7 @@ export default function VisitorDetailScreen() {
     const fetchVisitorChat = async (): Promise<void> => {
         setIsLoading(true);
         try {
-            const response = await fetch(API_URL, {
-                method: 'GET',
-                headers: {
-                    'Authorization': AUTH_TOKEN,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const json: VisitorChatApiResponse = await response.json();
+            const json: VisitorChatApiResponse = await getVisitorChat(SESSION_ID);
 
             if (json.status && json.data) {
                 const chats = json.data.chats ?? [];

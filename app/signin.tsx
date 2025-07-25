@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -14,59 +14,69 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-/**
- * NOTE:
- * The navigation route name 'VisitorList' must match exactly with the route defined in your navigator.
- * If you see a warning like:
- *   "The action 'NAVIGATE' with payload {"name":"VisitorList"} was not handled by any navigator."
- * it means that the route 'VisitorList' does not exist in your navigation configuration.
- * 
- * Please check your navigation setup and ensure that the route name is correct.
- * For example, if your navigator defines the route as 'VisitorsList', you must use that exact name.
- * 
- * Example:
- * navigation.navigate('VisitorsList');
- * 
- * Replace 'VISITOR_LIST_ROUTE' below with the correct route name as defined in your navigator.
- */
-const VISITOR_LIST_ROUTE = 'Visitors'; // <-- Change this to match your actual route name
+type LoginResponse = {
+    token?: string;
+    message?: string;
+};
+
+
+async function executeLoginRequest(email: string, password: string): Promise<LoginResponse> {
+    try {
+        const response = await fetch('https://api-dev.websitechat.in/users/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_details: {
+                    email,
+                    password,
+                },
+            }),
+        });
+
+        if (response.status === 200) {
+            const data = await response.json();
+            await AsyncStorage.setItem('USER_TOKEN', data.data.token);
+            return { token: data.data.token };
+        }
+
+        if (response.status === 401) {
+            return { message: 'Invalid credentials. Please check your email and password.' };
+        }
+        if (response.status === 404) {
+            return { message: 'User not found. Please check your email.' };
+        }
+        return { message: 'An unexpected error occurred. Please try again.' };
+    } catch (error) {
+        return { message: 'Network error. Please try again.' };
+    }
+}
 
 export default function LoginScreen() {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(false);
-    const navigation = useNavigation();
-
-    // Dummy credentials
-    const DUMMY_EMAIL = 'admin@websitechat.com';
-    const DUMMY_PASSWORD = 'password123';
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const handleLogin = async (): Promise<void> => {
         if (!email.trim() || !password.trim()) {
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
-        setLoading(true);
-        setTimeout(() => {
-            if (email.trim() === DUMMY_EMAIL && password.trim() === DUMMY_PASSWORD) {
-                setLoading(false);
-                // Navigate to visitor list page using the correct route name
-                navigation.navigate(VISITOR_LIST_ROUTE as never);
-            } else {
-                setLoading(false);
-                Alert.alert(
-                    'Login Failed',
-                    'Invalid credentials. Please try:\nEmail: admin@websitechat.com\nPassword: password123'
-                );
-            }
-        }, 1000);
-    };
+        setIsLoading(true);
+        const result = await executeLoginRequest(email.trim(), password.trim());
+        setIsLoading(false);
 
-    const handleDemoLogin = (): void => {
-        setEmail(DUMMY_EMAIL);
-        setPassword(DUMMY_PASSWORD);
+        if (result.token) {
+            // Store JWT token securely (e.g., AsyncStorage, SecureStore)
+            // Navigate to the main app screen or update auth context
+            // For demonstration, just show a success alert
+            Alert.alert('Success', 'Successfully logged in!');
+            // TODO: Implement navigation or context update here
+        } else {
+            Alert.alert('Login Failed', result.message || 'Invalid credentials. Please try:\nEmail: admin@websitechat.com\nPassword: password123');
+        }
     };
-
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
@@ -79,13 +89,11 @@ export default function LoginScreen() {
                 >
                     {/* Logo Section */}
                     <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}> <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="40" height="40" rx="20" fill="#FE7624" />
-                            <path d="M23 7L24.8906 12.1094L30 14L24.8906 15.8906L23 21L21.1094 15.8906L16 14L21.1094 12.1094L23 7Z" fill="white" />
-                            <path d="M13 18L14.3505 21.6495L18 23L14.3505 24.3505L13 28L11.6495 24.3505L8 23L11.6495 21.6495L13 18Z" fill="white" />
-                            <path d="M24 25L25.0804 27.9196L28 29L25.0804 30.0804L24 33L22.9196 30.0804L20 29L22.9196 27.9196L24 25Z" fill="white" />
-                        </svg>
-                            WebsiteChat</Text>
+                        <Text style={styles.logoText}>
+                            {/* Replace with an Image or SVG component as needed */}
+                            <Icon name="chat" size={40} color="#FE7624" style={{ marginRight: 8 }} />
+                            WebsiteChat
+                        </Text>
                     </View>
 
                     {/* Welcome Section */}
@@ -123,32 +131,17 @@ export default function LoginScreen() {
                                 autoCorrect={false}
                             />
                         </View>
-
-                        {/* Demo Credentials Helper */}
-                        <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin}>
-                            <Text style={styles.demoButtonText}>
-                                Use demo credentials
-                            </Text>
-                        </TouchableOpacity>
-
                         {/* Sign In Button */}
                         <TouchableOpacity
-                            style={[styles.signInButton, loading && styles.signInButtonDisabled]}
+                            style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
                             onPress={handleLogin}
-                            disabled={loading}
+                            disabled={isLoading}
                         >
                             <Text style={styles.signInButtonText}>
-                                {loading ? 'Signing in...' : 'Signin'}
+                                {isLoading ? 'Signing in...' : 'Signin'}
                             </Text>
                         </TouchableOpacity>
                     </View>
-
-                    {/* Demo Info */}
-                    {/* <View style={styles.demoInfoContainer}>
-                        <Text style={styles.demoInfoTitle}>Demo Credentials:</Text>
-                        <Text style={styles.demoInfoText}>Email: admin@websitechat.com</Text>
-                        <Text style={styles.demoInfoText}>Password: password123</Text>
-                    </View> */}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

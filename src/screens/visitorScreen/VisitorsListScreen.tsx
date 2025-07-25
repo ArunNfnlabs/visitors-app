@@ -1,3 +1,6 @@
+
+import { useAuth } from '@/src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
@@ -60,6 +63,7 @@ export default function VisitorsListScreen() {
     const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
     const [selectedVisitors, setSelectedVisitors] = useState<{ [id: string]: boolean }>({});
     const navigation = useNavigation();
+    const { logout } = useAuth();
 
     // API integration: fetch visitors from API
     const fetchVisitors = async (pageNum: number = 1, append: boolean = false) => {
@@ -87,6 +91,9 @@ export default function VisitorsListScreen() {
             setHasMore(false);
         } finally {
             setLoading(false);
+
+
+
         }
     };
 
@@ -116,7 +123,7 @@ export default function VisitorsListScreen() {
     // Modified: Navigate to VisitorDetailScreen on card press
     const handleVisitorPress = (visitor: Visitor) => {
         // @ts-ignore
-        navigation.navigate('VisitorDetailScreen', { visitorId: visitor.id });
+        navigation.navigate('visitor-detail', { visitorId: visitor.id });
     };
 
     const handleDeleteVisitor = (visitor: Visitor) => {
@@ -135,6 +142,25 @@ export default function VisitorsListScreen() {
                             delete copy[visitor.id];
                             return copy;
                         });
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleLogout = () => {
+        Alert.alert(
+            'Logout',
+            'Are you sure you want to logout?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Logout',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await logout();
+                        await AsyncStorage.removeItem('USER_TOKEN');
+                        navigation.navigate('signin' as never);
                     }
                 }
             ]
@@ -311,30 +337,25 @@ export default function VisitorsListScreen() {
                     <Text style={styles.welcomeLabel}>Welcome</Text>
                     <Text style={styles.userName}>Arunkumar Dhayalan</Text>
                 </View>
-                <TouchableOpacity style={styles.profileIconContainer}>
+                <TouchableOpacity style={styles.profileIconContainer} onPress={handleLogout}>
                     <View style={styles.profileIcon}>
-                        <Icon name="person" size={24} color="#333" />
+                        <Icon name="logout" size={24} color="#333" />
                     </View>
                 </TouchableOpacity>
             </View>
 
             {/* Menu and Search section */}
             <View style={styles.menuSearchSection}>
-                <TouchableOpacity style={styles.menuButton}>
-                    <Icon name="menu" size={24} color="#333" />
-                </TouchableOpacity>
                 <View style={styles.searchContainer}>
                     <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
                     <TextInput
                         placeholder="Search"
                         value={search}
+                        placeholderTextColor="#666"
                         onChangeText={setSearch}
                         style={styles.searchInput}
                     />
                 </View>
-                <TouchableOpacity style={styles.searchButton}>
-                    <Icon name="search" size={24} color="#333" />
-                </TouchableOpacity>
             </View>
 
             {/* All Visitors title */}
@@ -371,11 +392,16 @@ export default function VisitorsListScreen() {
             {renderCustomDatePicker()}
         </View>
     );
-
     return (
         <SafeAreaView style={styles.container}>
             {renderHeader()}
+
             <View style={styles.contentContainer}>
+                {filteredVisitors.length === 0 && (
+                    <View style={styles.noVisitorsContainer}>
+                        <Text style={styles.noVisitorsText}>No visitors found</Text>
+                    </View>
+                )}
                 <FlatList
                     data={filteredVisitors}
                     renderItem={renderVisitorCard}
@@ -401,6 +427,15 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f8f9fa',
+    },
+    noVisitorsContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    noVisitorsText: {
+        fontSize: 16,
+        color: '#666',
     },
     loadingContainer: {
         flex: 1,
@@ -468,10 +503,10 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     titleSection: {
-        marginBottom: 16,
+        marginBottom: 8,
     },
     allVisitorsTitle: {
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: '600',
         color: '#333',
     },
