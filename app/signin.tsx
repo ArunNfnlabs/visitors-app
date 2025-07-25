@@ -1,6 +1,8 @@
+import VisitorsListScreen from '@/src/screens/visitorScreen/VisitorsListScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -38,6 +40,7 @@ async function executeLoginRequest(email: string, password: string): Promise<Log
         if (response.status === 200) {
             const data = await response.json();
             await AsyncStorage.setItem('USER_TOKEN', data.data.token);
+
             return { token: data.data.token };
         }
 
@@ -77,74 +80,97 @@ export default function LoginScreen() {
             Alert.alert('Login Failed', result.message || 'Invalid credentials. Please try:\nEmail: admin@websitechat.com\nPassword: password123');
         }
     };
+    
+    const [token, setToken] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchToken = async (): Promise<void> => {
+            setIsLoading(true);
+            const storedToken = await AsyncStorage.getItem('USER_TOKEN');
+            setToken(storedToken);
+            setIsLoading(false);
+        };
+        fetchToken();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#ff6b35" />
+            </View>
+        );
+    }
+
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.keyboardView}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+
+        token ? <VisitorsListScreen /> :
+            <SafeAreaView style={styles.container}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.keyboardView}
                 >
-                    {/* Logo Section */}
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}>
-                            {/* Replace with an Image or SVG component as needed */}
-                            <Icon name="chat" size={40} color="#FE7624" style={{ marginRight: 8 }} />
-                            WebsiteChat
-                        </Text>
-                    </View>
-
-                    {/* Welcome Section */}
-                    <View style={styles.welcomeContainer}>
-                        <Text style={styles.welcomeTitle}>Hey, Login now!</Text>
-                        <Text style={styles.welcomeSubtitle}>to see your latest visitors</Text>
-                    </View>
-
-                    {/* Form Section */}
-                    <View style={styles.formContainer}>
-                        {/* Email Input */}
-                        <View style={styles.inputContainer}>
-                            <Icon name="email" size={20} color="#ff6b35" style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Email"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                        </View>
-
-                        {/* Password Input */}
-                        <View style={styles.inputContainer}>
-                            <Icon name="lock" size={20} color="#ff6b35" style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                        </View>
-                        {/* Sign In Button */}
-                        <TouchableOpacity
-                            style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
-                            onPress={handleLogin}
-                            disabled={isLoading}
-                        >
-                            <Text style={styles.signInButtonText}>
-                                {isLoading ? 'Signing in...' : 'Signin'}
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {/* Logo Section */}
+                        <View style={styles.logoContainer}>
+                            <Text style={styles.logoText}>
+                                {/* Replace with an Image or SVG component as needed */}
+                                <Icon name="chat" size={40} color="#FE7624" style={{ marginRight: 8 }} />
+                                WebsiteChat
                             </Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                        </View>
+
+                        {/* Welcome Section */}
+                        <View style={styles.welcomeContainer}>
+                            <Text style={styles.welcomeTitle}>Hey, Login now!</Text>
+                            <Text style={styles.welcomeSubtitle}>to see your latest visitors</Text>
+                        </View>
+
+                        {/* Form Section */}
+                        <View style={styles.formContainer}>
+                            {/* Email Input */}
+                            <View style={styles.inputContainer}>
+                                <Icon name="email" size={20} color="#ff6b35" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Email"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                            </View>
+
+                            {/* Password Input */}
+                            <View style={styles.inputContainer}>
+                                <Icon name="lock" size={20} color="#ff6b35" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                            </View>
+                            {/* Sign In Button */}
+                            <TouchableOpacity
+                                style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
+                                onPress={handleLogin}
+                                disabled={isLoading}
+                            >
+                                <Text style={styles.signInButtonText}>
+                                    {isLoading ? 'Signing in...' : 'Signin'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
     );
 }
 
