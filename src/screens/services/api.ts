@@ -27,7 +27,6 @@ export const getVisitors = async ({
 }): Promise<Visitor[]> => {
     try {
         const token = await AsyncStorage.getItem('USER_TOKEN');
-        console.log(token);
 
         const response = await axios.get(`${API_BASE_URL}/visitors/get-visitors`, {
             params: {
@@ -48,6 +47,8 @@ export const getVisitors = async ({
             id: v.sessionId.toString(),
             name: v.userDetails?.name?.trim() || 'Visitor',
             email: v.userDetails?.email || 'Unknown',
+            phone: v.userDetails?.phone || 'Unknown',
+            location: v.userDetails?.location || 'Unknown',
             lastSeenTime: formatLastSeen(v.startedAt),
         }));
     } catch (err) {

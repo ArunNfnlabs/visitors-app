@@ -8,7 +8,6 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    Image,
     ListRenderItemInfo,
     Modal,
     Platform,
@@ -27,6 +26,8 @@ type Visitor = {
     id: string;
     name?: string;
     email?: string;
+    phone?: string;
+    location?: string;
     lastSeenTime?: string;
     profilePicUrl?: string;
 };
@@ -174,58 +175,50 @@ export default function VisitorsListScreen() {
         }));
     };
 
-    // Render a single full-width visitor card
+    // Render a single visitor card matching the image design
     const renderVisitorCard = ({ item }: ListRenderItemInfo<Visitor>) => (
         <View style={styles.visitorCardWrapper}>
             <View style={styles.visitorCard}>
-                {/* Checkbox */}
-                {/* <TouchableOpacity
-                    style={styles.checkboxContainer}
-                    onPress={() => handleToggleCheckbox(item.id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <View style={[
-                        styles.checkbox,
-                        selectedVisitors[item.id] && styles.checkboxChecked
-                    ]}>
-                        {selectedVisitors[item.id] && (
-                            <Icon name="check" size={16} color="#fff" />
-                        )}
-                    </View>
-                </TouchableOpacity> */}
-                {/* Profile Pic or V */}
-                {item.profilePicUrl ? (
-                    <Image
-                        source={{ uri: item.profilePicUrl }}
-                        style={styles.profilePic}
-                    />
-                ) : (
-                    <View style={styles.profilePicFallback}>
-                        <Text style={styles.profilePicFallbackText}>
-                            {item.name && item.name.length > 0
-                                ? item.name[0].toUpperCase()
-                                : 'V'}
-                        </Text>
-                    </View>
-                )}
+                {/* Profile Avatar */}
+                <View style={styles.profilePicFallback}>
+                    <Text style={styles.profilePicFallbackText}>
+                        {item.name && item.name.length > 0
+                            ? item.name[0].toUpperCase()
+                            : 'V'}
+                    </Text>
+                </View>
+
                 {/* Visitor Info */}
-                <TouchableOpacity
-                    style={styles.visitorInfo}
-                    onPress={() => handleVisitorPress(item)}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.visitorName}>{item.name ?? 'Visitor'}</Text>
-                    <Text style={styles.visitorEmail}>{item.email ?? 'Unknown'}</Text>
-                    <Text style={styles.lastSeen}>Last seen: {item.lastSeenTime ?? 'Unknown'}</Text>
-                </TouchableOpacity>
-                {/* Delete Icon */}
-                <TouchableOpacity
-                    style={styles.deleteIconContainer}
-                    onPress={() => handleDeleteVisitor(item)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Icon name="delete" size={20} className='text-red-500' />
-                </TouchableOpacity>
+                <View style={styles.visitorInfo}>
+                    <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
+
+                    {/* Email with icon */}
+                    <View style={styles.infoRow}>
+                        <Icon name="email" size={14} color="#999" style={styles.infoIcon} />
+                        <Text style={styles.infoText}>{item?.email ?? 'Unknown'}</Text>
+                    </View>
+
+                    {/* Phone with icon */}
+                    <View style={styles.infoRow}>
+                        <Icon name="phone" size={14} color="#999" style={styles.infoIcon} />
+                        <Text style={styles.infoText}>{item?.phone ?? 'Unknown'}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                        <Icon name="location-on" size={14} color="#999" style={styles.infoIcon} />
+                        <Text style={styles.infoText}>{item.location ?? 'Unknown'}</Text>
+                    </View>
+
+                    {/* Date with icon */}
+
+                </View>
+
+                {/* Last Seen Badge */}
+                <View style={styles.lastSeenBadge}>
+                    <Icon name="access-time" size={14} color="#999" style={styles.infoIcon} />
+                    <Text style={styles.lastSeenBadgeText}>
+                        {item.lastSeenTime ?? ''}
+                    </Text>
+                </View>
             </View>
         </View>
     );
@@ -494,10 +487,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    menuButton: {
-        marginRight: 12,
-        padding: 4,
-    },
     searchButton: {
         marginLeft: 12,
         padding: 4,
@@ -558,55 +547,36 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#eee',
-        borderBottomWidth: 1,
-        borderBottomColor: '#fe7624',
-        // Box shadow for iOS
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        width: '100%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        // Elevation for Android
-        elevation: 4,
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        width: '100%',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    checkboxContainer: {
-        marginRight: 16,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: '#FE7624',
-        backgroundColor: '#fff',
+    lastSeenBadge: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        marginBottom: 4,
     },
-    checkboxChecked: {
-        backgroundColor: '#FE7624',
-        borderColor: '#FE7624',
-    },
-    profilePic: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        marginRight: 16,
-        backgroundColor: '#f5f5f5',
+    lastSeenBadgeText: {
+        fontSize: 14,
+        color: '#666',
     },
     profilePicFallback: {
         width: 40,
         height: 40,
-        borderRadius: 24,
-        backgroundColor: '#FE7624',
+        borderRadius: 20,
+        backgroundColor: '#6c7ae0',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
+        marginRight: 16,
     },
     profilePicFallbackText: {
         color: '#fff',
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: 'bold',
     },
     visitorInfo: {
@@ -617,20 +587,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
-        marginBottom: 4,
-    },
-    visitorEmail: {
-        fontSize: 14,
-        color: '#666',
         marginBottom: 8,
     },
-    lastSeen: {
-        fontSize: 12,
-        color: '#999',
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
     },
-    deleteIconContainer: {
-        marginLeft: 16,
+    infoIcon: {
+        marginRight: 8,
+    },
+    infoText: {
+        fontSize: 14,
+        color: '#666',
+    },
+    menuButton: {
         padding: 4,
+        marginLeft: 8,
     },
     // Modal styles
     modalOverlay: {
