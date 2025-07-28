@@ -76,14 +76,41 @@ export const getVisitors = async ({
 
         const visitors: any[] = response.data?.data?.userDetails ?? [];
 
-        return visitors.map((v: any) => ({
-            id: v.sessionId?.toString() ?? '',
-            name: v.userDetails?.name?.trim() || 'Visitor',
-            email: v.userDetails?.email || 'Unknown',
-            phone: v.userDetails?.phone || 'Unknown',
-            location: v.userDetails?.location || 'Unknown',
-            lastSeenTime: formatLastSeen(v.startedAt),
-        }));
+        // Process visitors and fetch first message for each
+        const processedVisitors = await Promise.all(
+            visitors.map(async (v: any) => {
+                let firstMessage = '';
+                
+                // Try to fetch the first message for this visitor
+                try {
+                    const chatResponse = await axios.get(`${API_BASE_URL}/v1/visitors/get-visitors-chat`, {
+                        params: { sessionId: v.sessionId },
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+                    
+                    const chats = chatResponse.data?.data?.chats || [];
+                    if (chats.length > 0) {
+                        firstMessage = chats[0].question || '';
+                    }
+                } catch (error) {
+                    console.log(`Could not fetch first message for visitor ${v.sessionId}:`, error);
+                }
+
+                return {
+                    id: v.sessionId?.toString() ?? '',
+                    name: v.userDetails?.name?.trim() || 'Visitor',
+                    email: v.userDetails?.email || 'not available',
+                    phone: v.userDetails?.phone || 'not available',
+                    location: v.userDetails?.location || 'not available',
+                    lastSeenTime: formatLastSeen(v.startedAt),
+                    firstMessage: firstMessage,
+                };
+            })
+        );
+
+        return processedVisitors;
     } catch (err) {
         console.error('Failed to fetch visitors:', err);
         return [];

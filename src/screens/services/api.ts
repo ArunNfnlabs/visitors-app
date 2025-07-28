@@ -61,9 +61,9 @@ export const getVisitors = async ({
         return visitors.map((v: any) => ({
             id: v.sessionId?.toString() ?? '',
             name: v.userDetails?.name?.trim() || 'Visitor',
-            email: v.userDetails?.email || 'Unknown',
-            phone: v.userDetails?.phone || 'Unknown',
-            location: v.userDetails?.location || 'Unknown',
+            email: v.userDetails?.email || 'not available',
+            phone: v.userDetails?.phone || 'not available',
+            location: v.userDetails?.location || 'not available',
             lastSeenTime: formatLastSeen(v.startedAt),
         }));
     } catch (err) {
@@ -90,8 +90,8 @@ export const getUser = async (): Promise<User | null> => {
         return {
             id: userData.id?.toString() ?? '',
             name: userData.name?.trim() || 'User',
-            email: userData.email || 'Unknown',
-            accountType: userData.account_type || 'Unknown',
+            email: userData.email || 'not available',
+            accountType: userData.account_type || 'not available',
             trialEndsAt: userData.trial_ends_at ?? null,
             trialStatus: userData.trial_status ?? null,
             isActive: Boolean(userData.is_active),
