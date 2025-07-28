@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View } from 'react-native';
 
-import LoginScreen from '../signin';
+import LoginScreen from './signin';
 
 export default function VisitorDetailPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);

@@ -7,7 +7,23 @@ export interface Visitor {
     id: string;
     name: string;
     email: string;
+    phone: string;
+    location: string;
     lastSeenTime: string;
+}
+
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    accountType: string;
+    trialEndsAt: string | null;
+    trialStatus: string | null;
+    isActive: boolean;
+    isVerified: boolean;
+    profilePic: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 const API_BASE_URL = 'https://api-dev.websitechat.in/v1';
@@ -26,9 +42,8 @@ export const getVisitors = async ({
     sortOrder?: 'DESC' | 'ASC';
 }): Promise<Visitor[]> => {
     try {
-        const token = await AsyncStorage.getItem('USER_TOKEN');
-
-        const response = await axios.get(`${API_BASE_URL}/visitors/get-visitors`, {
+        const token: string | null = await AsyncStorage.getItem('USER_TOKEN');
+        const response = await axios.get(`https://api-dev.websitechat.in/users/get-user`, {
             params: {
                 search,
                 page,
@@ -41,10 +56,10 @@ export const getVisitors = async ({
             },
         });
 
-        const visitors = response.data?.data?.userDetails ?? [];
+        const visitors: any[] = response.data?.data?.userDetails ?? [];
 
         return visitors.map((v: any) => ({
-            id: v.sessionId.toString(),
+            id: v.sessionId?.toString() ?? '',
             name: v.userDetails?.name?.trim() || 'Visitor',
             email: v.userDetails?.email || 'Unknown',
             phone: v.userDetails?.phone || 'Unknown',
@@ -57,14 +72,47 @@ export const getVisitors = async ({
     }
 };
 
-const formatLastSeen = (isoTime: string): string => {
-    const date = new Date(isoTime);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+export const getUser = async (): Promise<User | null> => {
+    try {
+        const token: string | null = await AsyncStorage.getItem('USER_TOKEN');
+        const response = await axios.get(`${API_BASE_URL}/users/get-user`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
 
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+        const userData: any = response.data?.data;
+        console.log(userData, 'userData');
+        if (!userData) {
+            return null;
+        }
+
+        return {
+            id: userData.id?.toString() ?? '',
+            name: userData.name?.trim() || 'User',
+            email: userData.email || 'Unknown',
+            accountType: userData.account_type || 'Unknown',
+            trialEndsAt: userData.trial_ends_at ?? null,
+            trialStatus: userData.trial_status ?? null,
+            isActive: Boolean(userData.is_active),
+            isVerified: Boolean(userData.is_verified),
+            profilePic: userData.profile_pic ?? null,
+            createdAt: userData.createdAt ?? '',
+            updatedAt: userData.updatedAt ?? '',
+        };
+    } catch (err) {
+        console.error('Failed to fetch user:', err);
+        return null;
+    }
+};
+
+const formatLastSeen = (isoTime: string): string => {
+    const date: Date = new Date(isoTime);
+    const now: Date = new Date();
+    const diffMs: number = now.getTime() - date.getTime();
+    const diffMins: number = Math.floor(diffMs / (1000 * 60));
+    const diffHours: number = Math.floor(diffMins / 60);
+    const diffDays: number = Math.floor(diffHours / 24);
 
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;

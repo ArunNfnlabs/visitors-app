@@ -1,16 +1,15 @@
 
 import { useAuth } from '@/src/context/AuthContext';
+import { getUser, getVisitors } from '@/src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
+    Image,
     ListRenderItemInfo,
     Modal,
-    Platform,
     Pressable,
     SafeAreaView,
     StyleSheet,
@@ -20,7 +19,38 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getVisitors } from '../services/api';
+import LoginScreen from '../auth/LoginScreen';
+import { User } from '../services/api';
+
+// --- Color utilities for random avatar background and text color ---
+const AVATAR_COLORS = [
+    { bg: '#6c7ae0', color: '#fff' },
+    { bg: '#ff6b35', color: '#fff' },
+    { bg: '#00b894', color: '#fff' },
+    { bg: '#fdcb6e', color: '#333' },
+    { bg: '#0984e3', color: '#fff' },
+    { bg: '#e17055', color: '#fff' },
+    { bg: '#00bcd4', color: '#fff' },
+    { bg: '#636e72', color: '#fff' },
+    { bg: '#b2bec3', color: '#333' },
+    { bg: '#fab1a0', color: '#333' },
+    { bg: '#a29bfe', color: '#fff' },
+    { bg: '#fd79a8', color: '#fff' },
+    { bg: '#55efc4', color: '#333' },
+    { bg: '#ffeaa7', color: '#333' },
+    { bg: '#dfe6e9', color: '#333' },
+];
+
+function getAvatarColor(key: string | undefined): { bg: string; color: string } {
+    if (!key) return AVATAR_COLORS[0];
+    // Simple hash function to pick a color based on the name/id
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % AVATAR_COLORS.length;
+    return AVATAR_COLORS[idx];
+}
 
 type Visitor = {
     id: string;
@@ -34,19 +64,7 @@ type Visitor = {
 
 const PAGE_SIZE = 30;
 
-const SORT_OPTIONS = [
-    { label: 'Recent first', value: 'recent' },
-    { label: 'Oldest first', value: 'oldest' },
-    { label: 'Name (A-Z)', value: 'name_asc' },
-    { label: 'Name (Z-A)', value: 'name_desc' },
-];
-
-const TIME_RANGE_OPTIONS = [
-    { label: 'All time', value: 'all' },
-    { label: 'Today', value: 'today' },
-    { label: 'This week', value: 'week' },
-    { label: 'Custom', value: 'custom' },
-];
+// Removed SORT_OPTIONS and TIME_RANGE_OPTIONS
 
 export default function VisitorsListScreen() {
     const [visitors, setVisitors] = useState<Visitor[]>([]);
@@ -54,30 +72,53 @@ export default function VisitorsListScreen() {
     const [loading, setLoading] = useState<boolean>(false);
     const [hasMore, setHasMore] = useState<boolean>(true);
     const [page, setPage] = useState<number>(1);
-    const [timeRange, setTimeRange] = useState<string>('all');
+    // Remove timeRange, custom date, etc.
+    // const [timeRange, setTimeRange] = useState<string>('all');
+    // const [showTimeRangeModal, setShowTimeRangeModal] = useState<boolean>(false);
+    // const [showCustomDatePicker, setShowCustomDatePicker] = useState<boolean>(false);
+    // const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+    // const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+    // const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
     const [sortOrder, setSortOrder] = useState<string>('recent');
     const [showSortModal, setShowSortModal] = useState<boolean>(false);
-    const [showTimeRangeModal, setShowTimeRangeModal] = useState<boolean>(false);
-    const [showCustomDatePicker, setShowCustomDatePicker] = useState<boolean>(false);
-    const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
-    const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-    const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
     const [selectedVisitors, setSelectedVisitors] = useState<{ [id: string]: boolean }>({});
-    const navigation = useNavigation();
+    const [user, setUser] = useState<User | null>(null);
+    const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
+    const router = useRouter();
     const { logout } = useAuth();
+    const [token, setToken] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        const fetchToken = async (): Promise<void> => {
+            setIsLoading(true);
+            const storedToken = await AsyncStorage.getItem('USER_TOKEN');
+            setToken(storedToken);
+            setIsLoading(false);
+        };
+        fetchToken();
+    }, []);
 
     // API integration: fetch visitors from API
     const fetchVisitors = async (pageNum: number = 1, append: boolean = false) => {
         setLoading(true);
         try {
-            const params: any = { page: pageNum, pageSize: PAGE_SIZE };
-            if (search) params.search = search;
-            if (sortOrder) params.sort = sortOrder;
-            if (timeRange) params.timeRange = timeRange;
-            if (timeRange === 'custom' && customStartDate && customEndDate) {
-                params.startDate = customStartDate.toISOString();
-                params.endDate = customEndDate.toISOString();
-            }
+            const params: any = {
+                page: pageNum,
+                limit: PAGE_SIZE,
+                search: search || '',
+                // Remove filter and timeRange
+                // filter: timeRange === 'all' ? '12m' : timeRange,
+                // sortOrder: sortOrder === 'recent' ? 'DESC' : 'ASC'
+                sortOrder: sortOrder === 'recent' ? 'DESC' : 'ASC'
+            };
+
+            // Remove custom date logic
+            // if (timeRange === 'custom' && customStartDate && customEndDate) {
+            //     params.startDate = customStartDate.toISOString();
+            //     params.endDate = customEndDate.toISOString();
+            // }
+
             const data = await getVisitors(params);
             const visitorList: Visitor[] = data || [];
             if (append) {
@@ -88,13 +129,11 @@ export default function VisitorsListScreen() {
             setHasMore(visitorList.length === PAGE_SIZE);
             setPage(pageNum);
         } catch (error) {
+            console.error('Error fetching visitors:', error);
             if (!append) setVisitors([]);
             setHasMore(false);
         } finally {
             setLoading(false);
-
-
-
         }
     };
 
@@ -104,16 +143,21 @@ export default function VisitorsListScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Reload on search, sort, timeRange, or custom date change
+    useEffect(() => {
+        const fetchUser = async () => {
+            const user = await getUser();
+            setUser(user);
+        };
+        fetchUser();
+    }, []);
     useEffect(() => {
         fetchVisitors(1, false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, sortOrder, timeRange, customStartDate, customEndDate]);
+    }, [search, sortOrder]);
 
     const executeLoadMoreVisitors = useCallback(async () => {
         if (loading || !hasMore) return;
         await fetchVisitors(page + 1, true);
-    }, [loading, hasMore, page, search, sortOrder, timeRange, customStartDate, customEndDate]);
+    }, [loading, hasMore, page, search, sortOrder]);
 
     const getFilteredVisitors = (): Visitor[] => {
         return visitors;
@@ -123,134 +167,93 @@ export default function VisitorsListScreen() {
 
     // Modified: Navigate to VisitorDetailScreen on card press
     const handleVisitorPress = (visitor: Visitor) => {
-        // @ts-ignore
-        navigation.navigate('visitor-detail', { visitorId: visitor.id });
+        // Use Expo Router to navigate to the visitor detail page
+        router.push({
+            pathname: '/visitor-detail',
+            params: {
+                visitorId: visitor.id,
+                visitorName: visitor.name || 'Visitor',
+                visitorEmail: visitor.email || '',
+                visitorCheckinTime: visitor.lastSeenTime || ''
+            }
+        });
     };
 
-    const handleDeleteVisitor = (visitor: Visitor) => {
-        Alert.alert(
-            'Delete Visitor',
-            `Are you sure you want to delete ${visitor.name || 'this visitor'}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        setVisitors(prev => prev.filter(v => v.id !== visitor.id));
-                        setSelectedVisitors(prev => {
-                            const copy = { ...prev };
-                            delete copy[visitor.id];
-                            return copy;
-                        });
-                    }
-                }
-            ]
-        );
+    // Remove Alert-based logout, use modal instead
+    const handleLogout = async () => {
+        await logout();
     };
 
-    const handleLogout = () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to logout?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Logout',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await logout();
-                        await AsyncStorage.removeItem('USER_TOKEN');
-                        navigation.navigate('signin' as never);
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleToggleCheckbox = (visitorId: string) => {
-        setSelectedVisitors(prev => ({
-            ...prev,
-            [visitorId]: !prev[visitorId]
-        }));
-    };
 
     // Render a single visitor card matching the image design
-    const renderVisitorCard = ({ item }: ListRenderItemInfo<Visitor>) => (
-        <View style={styles.visitorCardWrapper}>
-            <View style={styles.visitorCard}>
-                {/* Profile Avatar */}
-                <View style={styles.profilePicFallback}>
-                    <Text style={styles.profilePicFallbackText}>
-                        {item.name && item.name.length > 0
-                            ? item.name[0].toUpperCase()
-                            : 'V'}
-                    </Text>
-                </View>
+    const renderVisitorCard = ({ item }: ListRenderItemInfo<Visitor>) => {
+        // Only for fallback avatar: assign random bg/text color based on name or id
+        const avatarKey = item.name || item.id;
+        const { bg, color } = getAvatarColor(avatarKey);
 
-                {/* Visitor Info */}
-                <View style={styles.visitorInfo}>
-                    <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
+        return (
+            <Pressable style={styles.visitorCardWrapper} onPress={() => handleVisitorPress(item)}>
+                <View style={styles.visitorCard}>
+                    {/* Profile Avatar */}
+                    {item.profilePicUrl ? (
+                        <Image
+                            source={{ uri: item.profilePicUrl }}
+                            style={styles.profilePicImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={[styles.profilePicFallback, { backgroundColor: bg }]}>
+                            <Text style={[styles.profilePicFallbackText, { color }]}>
+                                {item.name && item.name.length > 0
+                                    ? item.name[0].toUpperCase()
+                                    : 'V'}
+                            </Text>
+                        </View>
+                    )}
 
-                    {/* Email with icon */}
-                    <View style={styles.infoRow}>
-                        <Icon name="email" size={14} color="#999" style={styles.infoIcon} />
-                        <Text style={styles.infoText}>{item?.email ?? 'Unknown'}</Text>
+                    {/* Visitor Info */}
+                    <View style={styles.visitorInfo}>
+                        <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
+
+                        {/* Email with icon */}
+                        <View style={styles.infoRow}>
+                            <Icon name="email" size={14} color="#999" style={styles.infoIcon} />
+                            <Text style={styles.infoText}>{item?.email ?? 'not available'}</Text>
+                        </View>
+
+                        {/* Phone with icon */}
+                        <View style={styles.infoRow}>
+                            <Icon name="phone" size={14} color="#999" style={styles.infoIcon} />
+                            <Text style={styles.infoText}>{item?.phone ?? 'not available'}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Icon name="location-on" size={14} color="#999" style={styles.infoIcon} />
+                            <Text style={styles.infoText}>{item.location ?? 'not available'}</Text>
+                        </View>
+
+                        {/* Date with icon */}
+
                     </View>
 
-                    {/* Phone with icon */}
-                    <View style={styles.infoRow}>
-                        <Icon name="phone" size={14} color="#999" style={styles.infoIcon} />
-                        <Text style={styles.infoText}>{item?.phone ?? 'Unknown'}</Text>
+                    {/* Last Seen Badge */}
+                    <View style={styles.lastSeenBadge}>
+                        <Icon name="access-time" size={14} color="#999" style={styles.infoIcon} />
+                        <Text style={styles.lastSeenBadgeText}>
+                            {item.lastSeenTime ?? ''}
+                        </Text>
                     </View>
-                    <View style={styles.infoRow}>
-                        <Icon name="location-on" size={14} color="#999" style={styles.infoIcon} />
-                        <Text style={styles.infoText}>{item.location ?? 'Unknown'}</Text>
-                    </View>
-
-                    {/* Date with icon */}
-
                 </View>
+            </Pressable>
+        );
+    };
 
-                {/* Last Seen Badge */}
-                <View style={styles.lastSeenBadge}>
-                    <Icon name="access-time" size={14} color="#999" style={styles.infoIcon} />
-                    <Text style={styles.lastSeenBadgeText}>
-                        {item.lastSeenTime ?? ''}
-                    </Text>
-                </View>
-            </View>
-        </View>
-    );
-
+    // Only sort modal remains, with minimal options
     const handleSelectSortOrder = (value: string) => {
         setSortOrder(value);
         setShowSortModal(false);
     };
 
-    const handleSelectTimeRange = (value: string) => {
-        setTimeRange(value);
-        setShowTimeRangeModal(false);
-        if (value === 'custom') {
-            setShowCustomDatePicker(true);
-        }
-    };
-
-    const handleDateChange = (event: any, selectedDate?: Date) => {
-        if (event.type === 'dismissed') {
-            setShowCustomDatePicker(false);
-            return;
-        }
-        if (datePickerMode === 'start') {
-            setCustomStartDate(selectedDate || new Date());
-            setDatePickerMode('end');
-        } else {
-            setCustomEndDate(selectedDate || new Date());
-            setShowCustomDatePicker(false);
-            setDatePickerMode('start');
-        }
-    };
-
+    // Only show two sort options: Recent first, Oldest first
     const renderSortModal = () => (
         <Modal
             visible={showSortModal}
@@ -260,78 +263,87 @@ export default function VisitorsListScreen() {
         >
             <Pressable style={styles.modalOverlay} onPress={() => setShowSortModal(false)}>
                 <View style={styles.modalContent}>
-                    {SORT_OPTIONS.map(option => (
-                        <TouchableOpacity
-                            key={option.value}
-                            style={styles.modalOption}
-                            onPress={() => handleSelectSortOrder(option.value)}
-                        >
-                            <Text style={[
-                                styles.modalOptionText,
-                                sortOrder === option.value && styles.modalOptionTextSelected
-                            ]}>
-                                {option.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    <TouchableOpacity
+                        style={styles.modalOption}
+                        onPress={() => handleSelectSortOrder('recent')}
+                    >
+                        <Text style={[
+                            styles.modalOptionText,
+                            sortOrder === 'recent' && styles.modalOptionTextSelected
+                        ]}>
+                            Recent first
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.modalOption}
+                        onPress={() => handleSelectSortOrder('oldest')}
+                    >
+                        <Text style={[
+                            styles.modalOptionText,
+                            sortOrder === 'oldest' && styles.modalOptionTextSelected
+                        ]}>
+                            Oldest first
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </Pressable>
         </Modal>
     );
 
-    const renderTimeRangeModal = () => (
+    // New: Logout confirmation modal
+    const renderLogoutModal = () => (
         <Modal
-            visible={showTimeRangeModal}
+            visible={showLogoutModal}
             transparent
             animationType="fade"
-            onRequestClose={() => setShowTimeRangeModal(false)}
+            onRequestClose={() => setShowLogoutModal(false)}
         >
-            <Pressable style={styles.modalOverlay} onPress={() => setShowTimeRangeModal(false)}>
-                <View style={styles.modalContent}>
-                    {TIME_RANGE_OPTIONS.map(option => (
+            <Pressable style={styles.modalOverlay} onPress={() => setShowLogoutModal(false)}>
+                <View style={styles.logoutModalContent}>
+                    <Text style={styles.logoutModalTitle}>Logout</Text>
+                    <Text style={styles.logoutModalMessage}>Are you sure you want to logout?</Text>
+                    <View style={styles.logoutModalActions}>
                         <TouchableOpacity
-                            key={option.value}
-                            style={styles.modalOption}
-                            onPress={() => handleSelectTimeRange(option.value)}
+                            style={[styles.logoutModalButton, styles.logoutModalCancel]}
+                            onPress={() => setShowLogoutModal(false)}
                         >
-                            <Text style={[
-                                styles.modalOptionText,
-                                timeRange === option.value && styles.modalOptionTextSelected
-                            ]}>
-                                {option.label}
-                            </Text>
+                            <Text style={styles.logoutModalCancelText}>Cancel</Text>
                         </TouchableOpacity>
-                    ))}
+                        <TouchableOpacity
+                            style={[styles.logoutModalButton, styles.logoutModalConfirm]}
+                            onPress={async () => {
+                                setShowLogoutModal(false);
+                                router.replace('/signin');
+                                await handleLogout();
+                            }}
+                        >
+                            <Text style={styles.logoutModalConfirmText}>Logout</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </Pressable>
         </Modal>
     );
 
-    const renderCustomDatePicker = () => {
-        if (!showCustomDatePicker) return null;
-        const value = datePickerMode === 'start'
-            ? (customStartDate || new Date())
-            : (customEndDate || new Date());
-        return (
-            <DateTimePicker
-                value={value}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                onChange={handleDateChange}
-            />
-        );
-    };
-
+    // Header: search bar with sort icon on right
     const renderHeader = () => (
         <View style={styles.headerContainer}>
             {/* Top section with welcome message and profile */}
             <View style={styles.welcomeSection}>
                 <View style={styles.welcomeText}>
                     <Text style={styles.welcomeLabel}>Welcome</Text>
-                    <Text style={styles.userName}>Arunkumar Dhayalan</Text>
+                    <Text style={styles.userName}>{user?.name}</Text>
                 </View>
-                <TouchableOpacity style={styles.profileIconContainer} onPress={handleLogout}>
+                <TouchableOpacity
+                    style={styles.profileIconContainer}
+                    onPress={() => setShowLogoutModal(true)}
+                >
                     <View style={styles.profileIcon}>
+                        {user?.profilePic ? (
+                            <Image source={{ uri: user.profilePic }} style={styles.profileIconImage} />
+                        ) : (
+                            <Icon name="person" size={24} color="#333" />
+                        )}
                         <Icon name="logout" size={24} color="#333" />
                     </View>
                 </TouchableOpacity>
@@ -349,70 +361,60 @@ export default function VisitorsListScreen() {
                         style={styles.searchInput}
                     />
                 </View>
+                <TouchableOpacity
+                    style={styles.searchButton}
+                    onPress={() => setShowSortModal(true)}
+                >
+                    <Icon name="sort" size={28} color="#007AFF" />
+                </TouchableOpacity>
             </View>
 
             {/* All Visitors title */}
             <View style={styles.titleSection}>
                 <Text style={styles.allVisitorsTitle}>All Visitors</Text>
             </View>
-
-            {/* Original filters */}
-            <View style={styles.filtersContainer}>
-                <TouchableOpacity
-                    style={styles.filterButton}
-                    onPress={() => setShowTimeRangeModal(true)}
-                >
-                    <Text style={styles.filterText}>
-                        {TIME_RANGE_OPTIONS.find(opt => opt.value === timeRange)?.label || 'Time range'}
-                        {timeRange === 'custom' && customStartDate && customEndDate
-                            ? `: ${customStartDate.toLocaleDateString()} - ${customEndDate.toLocaleDateString()}`
-                            : ''}
-                    </Text>
-                    <Icon name="keyboard-arrow-down" size={20} color="#666" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.filterButton}
-                    onPress={() => setShowSortModal(true)}
-                >
-                    <Text style={styles.filterText}>
-                        {SORT_OPTIONS.find(opt => opt.value === sortOrder)?.label || 'Sorting order'}
-                    </Text>
-                    <Icon name="keyboard-arrow-down" size={20} color="#666" />
-                </TouchableOpacity>
-            </View>
             {renderSortModal()}
-            {renderTimeRangeModal()}
-            {renderCustomDatePicker()}
+            {renderLogoutModal()}
         </View>
     );
-    return (
-        <SafeAreaView style={styles.container}>
-            {renderHeader()}
 
-            <View style={styles.contentContainer}>
-                {filteredVisitors.length === 0 && (
-                    <View style={styles.noVisitorsContainer}>
-                        <Text style={styles.noVisitorsText}>No visitors found</Text>
-                    </View>
-                )}
-                <FlatList
-                    data={filteredVisitors}
-                    renderItem={renderVisitorCard}
-                    keyExtractor={(item) => item.id}
-                    onEndReached={executeLoadMoreVisitors}
-                    onEndReachedThreshold={0.2}
-                    ListFooterComponent={
-                        loading && hasMore ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color="#007AFF" />
-                                <Text style={styles.loadingText}>Loading more visitors...</Text>
-                            </View>
-                        ) : null
-                    }
-                    showsVerticalScrollIndicator={false}
-                />
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#ff6b35" />
             </View>
-        </SafeAreaView>
+        );
+    }
+    return (
+        token ?
+            <SafeAreaView style={styles.container}>
+                {renderHeader()}
+
+                <View style={styles.contentContainer}>
+                    {filteredVisitors.length === 0 && (
+                        <View style={styles.noVisitorsContainer}>
+                            <Text style={styles.noVisitorsText}>No visitors found</Text>
+                        </View>
+                    )}
+                    <FlatList
+                        data={filteredVisitors}
+                        renderItem={renderVisitorCard}
+                        keyExtractor={(item) => item.id}
+                        onEndReached={executeLoadMoreVisitors}
+                        onEndReachedThreshold={0.2}
+                        ListFooterComponent={
+                            loading && hasMore ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color="#007AFF" />
+                                    <Text style={styles.loadingText}>Loading more visitors...</Text>
+                                </View>
+                            ) : null
+                        }
+                        showsVerticalScrollIndicator={false}
+                    />
+                </View>
+            </SafeAreaView>
+            : <LoginScreen />
     );
 }
 
@@ -481,6 +483,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#e0e0e0',
+        flexDirection: 'row',
+        overflow: 'hidden',
+    },
+    profileIconImage: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 4,
     },
     menuSearchSection: {
         flexDirection: 'row',
@@ -519,17 +529,24 @@ const styles = StyleSheet.create({
     filtersContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginTop: 8,
     },
     filterButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 0,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E5EA',
+        minWidth: 120,
+        justifyContent: 'space-between',
     },
     filterText: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#333',
-        marginRight: 4,
+        fontWeight: '500',
     },
     contentContainer: {
         flex: 1,
@@ -551,10 +568,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         width: '100%',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        // shadowOffset: { width: 0, height: 2 },
+        // shadowOpacity: 0.1,
+        // shadowRadius: 4,
+        // elevation: 2,
     },
     lastSeenBadge: {
         flexDirection: 'row',
@@ -569,15 +586,22 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#6c7ae0',
+        // backgroundColor: '#6c7ae0', // removed, now set dynamically
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
     },
     profilePicFallbackText: {
-        color: '#fff',
+        // color: '#fff', // removed, now set dynamically
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    profilePicImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 16,
+        backgroundColor: '#e0e0e0',
     },
     visitorInfo: {
         flex: 1,
@@ -630,5 +654,54 @@ const styles = StyleSheet.create({
     modalOptionTextSelected: {
         color: '#007AFF',
         fontWeight: 'bold',
+    },
+    // Logout Modal Styles
+    logoutModalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 24,
+        minWidth: 260,
+        alignItems: 'center',
+        elevation: 5,
+    },
+    logoutModalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 8,
+    },
+    logoutModalMessage: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+    logoutModalActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    logoutModalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginHorizontal: 4,
+    },
+    logoutModalCancel: {
+        backgroundColor: '#f0f0f0',
+    },
+    logoutModalConfirm: {
+        backgroundColor: '#ff3b30',
+    },
+    logoutModalCancelText: {
+        color: '#333',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    logoutModalConfirmText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });

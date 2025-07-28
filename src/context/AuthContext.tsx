@@ -17,7 +17,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const TOKEN_KEY = 'auth_token';
+const TOKEN_KEY = 'USER_TOKEN';
 const USER_KEY = 'user_data';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -61,12 +61,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             setIsLoading(true);
+            console.log('Login attempt for email:', email);
             
             // For demo purposes, use dummy credentials
             const DUMMY_EMAIL = 'admin@websitechat.com';
             const DUMMY_PASSWORD = 'password123';
             
             if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
+                console.log('Using dummy credentials for demo');
                 // Simulate API response
                 const mockUserData = {
                     token: 'mock_token_' + Date.now(),
@@ -80,21 +82,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 
                 return { success: true };
             } else {
-                // Real API call would go here
-                const response = await fetch("https://api.websitechat.in/v1/auth/login", {
+                console.log('Making real API call to:', 'https://api-dev.websitechat.in/users/login');
+                // Real API call with correct endpoint and format
+                const requestBody = {
+                    user_details: {
+                        email: email,
+                        password: password
+                    }
+                };
+                console.log('Request body:', JSON.stringify(requestBody, null, 2));
+                
+                const response = await fetch("https://api-dev.websitechat.in/users/login", {
                     method: "POST",
-                    body: JSON.stringify({ email, password }),
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify(requestBody),
                 });
                 
-                const data = await response.json();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
                 
-                if (data.token) {
-                    await saveToken(data.token, data);
-                    setUser(data);
+                const data = await response.json();
+                console.log('Login API response:', JSON.stringify(data, null, 2));
+                
+                if (response.ok && data.data && data.data.token) {
+                    console.log('Login successful, token received');
+                    const userData = {
+                        token: data.data.token,
+                        email: email,
+                        id: data.data.id || 1,
+                        name: data.data.name || 'User',
+                        ...data.data
+                    };
+                    
+                    await saveToken(userData.token, userData);
+                    setUser(userData);
                     return { success: true };
                 } else {
-                    return { success: false, error: data.message || 'Login failed' };
+                    console.log('Login failed:', data);
+                    const errorMessage = data.message || data.error || 'Login failed';
+                    return { success: false, error: errorMessage };
                 }
             }
         } catch (error) {

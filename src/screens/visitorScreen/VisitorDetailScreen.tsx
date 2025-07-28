@@ -1,5 +1,5 @@
 import { getVisitorChat } from '@/src/services/api';
-import { useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
+// Types updated to match API response (snake_case)
 type VisitorChat = {
     id: number;
-    askedAt: string;
+    asked_at: string;
     question: string;
     answer: string;
-    answerAt: string;
+    answer_at: string;
 };
 
 type VisitorDetails = {
@@ -29,10 +30,10 @@ type VisitorDetails = {
 };
 
 type ChatbotConfig = {
-    visitorDetails?: VisitorDetails;
-    chatbotName?: string;
-    welcomeMessage?: string;
-    avatarUrl?: string;
+    visitor_details?: VisitorDetails;
+    chatbot_name?: string;
+    welcome_message?: string;
+    avatar_url?: string;
 };
 
 type VisitorChatApiResponse = {
@@ -41,7 +42,8 @@ type VisitorChatApiResponse = {
     message: string;
     data?: {
         chats?: VisitorChat[];
-        chatbotConfig?: ChatbotConfig;
+        chatbotConfig?: ChatbotConfig; // for backward compatibility, but we will use chatbot_config
+        chatbot_config?: ChatbotConfig;
     };
 };
 
@@ -55,16 +57,21 @@ type Message = {
     avatarUrl?: string;
 };
 
-const SESSION_ID = '152'; // This should come from navigation params
-
 export default function VisitorDetailScreen() {
-    const navigation = useNavigation();
+    const router = useRouter();
+    const params = useLocalSearchParams();
     const scrollViewRef = useRef<ScrollView>(null);
+
+    // Get visitor data from URL parameters
+    const visitorId = params.visitorId as string;
+    const visitorName = params.visitorName as string;
+    const visitorEmail = params.visitorEmail as string;
+    const visitorCheckinTime = params.visitorCheckinTime as string;
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [visitorInfo, setVisitorInfo] = useState<VisitorDetails>({
-        name: '',
-        email: '',
+        name: visitorName || '',
+        email: visitorEmail || '',
         phone: '',
         location: ''
     });
@@ -80,35 +87,53 @@ export default function VisitorDetailScreen() {
     const fetchVisitorChat = async (): Promise<void> => {
         setIsLoading(true);
         try {
-            const json: VisitorChatApiResponse = await getVisitorChat(SESSION_ID);
+            // Use visitor ID from URL params instead of hardcoded SESSION_ID
+            const json: VisitorChatApiResponse = await getVisitorChat(visitorId);
 
             if (json.status && json.data) {
                 const chats = json.data.chats ?? [];
-                const chatbotConfig = json.data.chatbotConfig ?? {};
+                // Support both chatbotConfig (camelCase) and chatbot_config (snake_case)
+                const chatbotConfig: ChatbotConfig = json.data.chatbot_config
+                    ? {
+                        visitor_details: json.data.chatbot_config.visitor_details,
+                        chatbot_name: json.data.chatbot_config.chatbot_name,
+                        welcome_message: json.data.chatbot_config.welcome_message,
+                        avatar_url: json.data.chatbot_config.avatar_url,
+                    }
+                    : json.data.chatbotConfig
+                        ? {
+                            visitor_details: json.data.chatbotConfig.visitor_details,
+                            chatbot_name: json.data.chatbotConfig.chatbot_name,
+                            welcome_message: json.data.chatbotConfig.welcome_message,
+                            avatar_url: json.data.chatbotConfig.avatar_url,
+                        }
+                        : {};
 
-                setVisitorInfo(chatbotConfig.visitorDetails ?? {
-                    name: '',
-                    email: '',
-                    phone: '',
-                    location: ''
+                // Use visitor data from URL params as fallback
+                setVisitorInfo({
+                    name: chatbotConfig.visitor_details?.name || visitorName || '',
+                    email: chatbotConfig.visitor_details?.email || visitorEmail || '',
+                    phone: chatbotConfig.visitor_details?.phone || '',
+                    location: chatbotConfig.visitor_details?.location || ''
                 });
-                setChatbotName(chatbotConfig.chatbotName ?? 'AI Help Desk');
-                setWelcomeMessage(chatbotConfig.welcomeMessage ?? '');
-                setChatbotAvatarUrl(chatbotConfig.avatarUrl ?? '');
+                setChatbotName(chatbotConfig.chatbot_name ?? 'AI Help Desk');
+                setWelcomeMessage(chatbotConfig.welcome_message ?? '');
+                setChatbotAvatarUrl(chatbotConfig.avatar_url ?? '');
 
                 // Compose messages array for UI
                 const chatMessages: Message[] = [];
 
                 // Add welcome message from bot
-                if (chatbotConfig.welcomeMessage) {
+                if (chatbotConfig.welcome_message) {
                     chatMessages.push({
                         id: 'welcome',
                         type: 'bot',
-                        sender: chatbotConfig.chatbotName || 'AI Help Desk',
-                        message: chatbotConfig.welcomeMessage,
-                        timestamp: chats.length > 0 && chats[0].askedAt ? formatTime(chats[0].askedAt) : '',
+                        sender: chatbotConfig.chatbot_name || 'AI Help Desk',
+                        message: chatbotConfig.welcome_message,
+                        // If there are no chats, use current time for welcome message
+                        timestamp: chats.length > 0 && chats[0].asked_at ? formatTime(chats[0].asked_at) : formatTime(new Date().toISOString()),
                         isWelcome: true,
-                        avatarUrl: chatbotConfig.avatarUrl
+                        avatarUrl: chatbotConfig.avatar_url
                     });
                 }
 
@@ -118,19 +143,19 @@ export default function VisitorDetailScreen() {
                     chatMessages.push({
                         id: `q-${chat.id}`,
                         type: 'visitor',
-                        sender: (chatbotConfig.visitorDetails && chatbotConfig.visitorDetails.name) ? chatbotConfig.visitorDetails.name : 'Visitor',
+                        sender: (chatbotConfig.visitor_details && chatbotConfig.visitor_details.name) ? chatbotConfig.visitor_details.name : visitorName || 'Visitor',
                         message: chat.question,
-                        timestamp: formatTime(chat.askedAt)
+                        timestamp: formatTime(chat.asked_at)
                     });
                     // Bot answer
                     if (chat.answer) {
                         chatMessages.push({
                             id: `a-${chat.id}`,
                             type: 'bot',
-                            sender: chatbotConfig.chatbotName || 'AI Help Desk',
+                            sender: chatbotConfig.chatbot_name || 'AI Help Desk',
                             message: chat.answer,
-                            timestamp: formatTime(chat.answerAt),
-                            avatarUrl: chatbotConfig.avatarUrl
+                            timestamp: formatTime(chat.answer_at),
+                            avatarUrl: chatbotConfig.avatar_url
                         });
                     }
                 });
@@ -212,7 +237,7 @@ export default function VisitorDetailScreen() {
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={() => router.back()}
                 >
                     <Icon name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
@@ -236,14 +261,12 @@ export default function VisitorDetailScreen() {
                         </Text>
                         <Text style={styles.headerStatus}>
                             {/* No online status in API, so just show email or blank */}
-                            {(visitorInfo && visitorInfo.email) ? visitorInfo.email : ''}
+                            {(visitorInfo && visitorInfo.email) ? visitorInfo.email : 'not available'}
                         </Text>
                     </View>
                 </View>
-                <TouchableOpacity style={styles.moreButton}>
-                    <Icon name="more-vert" size={24} color="#333" />
-                </TouchableOpacity>
             </View>
+            
             {/* Chat Messages */}
             {isLoading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

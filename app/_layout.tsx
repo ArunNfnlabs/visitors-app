@@ -27,6 +27,7 @@ function RootLayoutNav() {
           // Authenticated user - show main app
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="visitor-detail" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" options={{ headerShown: false }} />
           </>
         ) : (

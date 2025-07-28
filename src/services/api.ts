@@ -1,11 +1,35 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
-const API_BASE_URL = 'https://api.websitechat.in/v1';
+export interface Visitor {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+    lastSeenTime: string;
+}
+
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    accountType: string;
+    trialEndsAt: string | null;
+    trialStatus: string | null;
+    isActive: boolean;
+    isVerified: boolean;
+    profilePic: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+const API_BASE_URL = 'https://api-dev.websitechat.in';
 
 // Get stored auth token
 const getAuthToken = async (): Promise<string | null> => {
     try {
-        return await AsyncStorage.getItem('auth_token');
+        return await AsyncStorage.getItem('USER_TOKEN');
     } catch (error) {
         console.error('Error getting auth token:', error);
         return null;
@@ -15,110 +39,162 @@ const getAuthToken = async (): Promise<string | null> => {
 // Store auth token
 const storeAuthToken = async (token: string): Promise<void> => {
     try {
-        await AsyncStorage.setItem('auth_token', token);
+        await AsyncStorage.setItem('USER_TOKEN', token);
     } catch (error) {
         console.error('Error storing auth token:', error);
     }
 };
 
-// Create headers with auth token
-const createHeaders = async (): Promise<HeadersInit> => {
-    const token = await getAuthToken();
-    return {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-    };
-};
-
-// Common API call function
-const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-    try {
-        const headers = await createHeaders();
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers: {
-                ...headers,
-                ...options.headers,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API call error:', error);
-        throw error;
-    }
-};
-
-// Common API call function with token storage (for login)
-const apiCallWithTokenStorage = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // If login successful and token exists, store it
-        if (data.token) {
-            await storeAuthToken(data.token);
-        }
-
-        return data;
-    } catch (error) {
-        console.error('API call error:', error);
-        throw error;
-    }
-};
-
 // Get visitors with authentication
-export const getVisitors = async (params: any = {}): Promise<any> => {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = `/visitors/get-visitors${queryString ? `?${queryString}` : ''}`;
-    
-    return apiCall(endpoint);
+export const getVisitors = async ({
+    page = 1,
+    limit = 30,
+    search = '',
+    filter = '12m',
+    sortOrder = 'DESC',
+}: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    filter?: string;
+    sortOrder?: 'DESC' | 'ASC';
+}): Promise<Visitor[]> => {
+    try {
+        const token: string | null = await getAuthToken();
+        const response = await axios.get(`${API_BASE_URL}/v1/visitors/get-visitors`, {
+            params: {
+                search,
+                page,
+                limit,
+                filter,
+                sortOrder,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const visitors: any[] = response.data?.data?.userDetails ?? [];
+
+        return visitors.map((v: any) => ({
+            id: v.sessionId?.toString() ?? '',
+            name: v.userDetails?.name?.trim() || 'Visitor',
+            email: v.userDetails?.email || 'Unknown',
+            phone: v.userDetails?.phone || 'Unknown',
+            location: v.userDetails?.location || 'Unknown',
+            lastSeenTime: formatLastSeen(v.startedAt),
+        }));
+    } catch (err) {
+        console.error('Failed to fetch visitors:', err);
+        return [];
+    }
+};
+
+export const getUser = async (): Promise<User | null> => {
+    try {
+        const token: string | null = await getAuthToken();
+        console.log('getUser - Token:', token ? 'Token exists' : 'No token found');
+        
+        if (!token) {
+            console.log('getUser - No token available, returning null');
+            return null;
+        }
+        
+        console.log('getUser - Making API request to:', `${API_BASE_URL}/users/get-user`);
+        const response = await axios.get(`${API_BASE_URL}/users/get-user`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('getUser - Response status:', response.status);
+        console.log('getUser - Full response:', response.data);
+        
+        const userData: any = response.data?.data;
+        console.log('getUser - userData:', userData);
+        
+        if (!userData) {
+            console.log('getUser - No user data found in response');
+            return null;
+        }
+
+        const user: User = {
+            id: userData.id?.toString() ?? '',
+            name: userData.name?.trim() || 'User',
+            email: userData.email || 'Unknown',
+            accountType: userData.account_type || 'Unknown',
+            trialEndsAt: userData.trial_ends_at ?? null,
+            trialStatus: userData.trial_status ?? null,
+            isActive: Boolean(userData.is_active),
+            isVerified: Boolean(userData.is_verified),
+            profilePic: userData.profile_pic ?? null,
+            createdAt: userData.createdAt ?? '',
+            updatedAt: userData.updatedAt ?? '',
+        };
+        
+        console.log('getUser - Processed user object:', user);
+        return user;
+    } catch (err) {
+        console.error('getUser - Failed to fetch user:', err);
+        if (axios.isAxiosError(err)) {
+            console.error('getUser - Axios error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message
+            });
+        }
+        return null;
+    }
 };
 
 // Get visitor chat with authentication
 export const getVisitorChat = async (sessionId: string): Promise<any> => {
-    const endpoint = `/visitors/get-visitors-chat?sessionId=${sessionId}`;
-    
-    return apiCall(endpoint);
+    try {
+        const token: string | null = await getAuthToken();
+        const response = await axios.get(`${API_BASE_URL}/v1/visitors/get-visitors-chat`, {
+            params: { sessionId },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return response.data;
+    } catch (err) {
+        console.error('Failed to fetch visitor chat:', err);
+        throw err;
+    }
 };
 
 // Login function with token storage
 export const loginUser = async (email: string, password: string): Promise<any> => {
-    return apiCallWithTokenStorage('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-    });
+    try {
+        const response = await axios.post(`${API_BASE_URL}/users/login`, {
+            user_details: {
+                email,
+                password,
+            },
+        });
+
+        if (response.data.data && response.data.data.token) {
+            await storeAuthToken(response.data.data.token);
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
+    }
 };
 
 // Logout function
 export const logoutUser = async (): Promise<void> => {
     try {
         // Clear stored tokens
-        await AsyncStorage.removeItem('auth_token');
+        await AsyncStorage.removeItem('USER_TOKEN');
         await AsyncStorage.removeItem('user_data');
     } catch (error) {
         console.error('Logout error:', error);
     }
-};
-
-// Generic authenticated API call
-export const authenticatedApiCall = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-    return apiCall(endpoint, options);
 };
 
 // Check if user is authenticated
@@ -140,4 +216,19 @@ export const getCurrentUser = async (): Promise<any> => {
         console.error('Error getting user data:', error);
         return null;
     }
+};
+
+const formatLastSeen = (isoTime: string): string => {
+    const date: Date = new Date(isoTime);
+    const now: Date = new Date();
+    const diffMs: number = now.getTime() - date.getTime();
+    const diffMins: number = Math.floor(diffMs / (1000 * 60));
+    const diffHours: number = Math.floor(diffMins / 60);
+    const diffDays: number = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return '1d ago';
+    return `${diffDays}d ago`;
 }; 
