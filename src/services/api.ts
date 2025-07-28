@@ -24,6 +24,23 @@ export interface User {
     updatedAt: string;
 }
 
+export interface LineChartData {
+    dailyCounts: Array<{
+        label: string;
+        count: number;
+    }>;
+    currentPeriodTotalChats: number;
+    percentageChangeInTotalChats: string;
+    currentPeriodAverageChats: string;
+    percentageChangeInAverageChats: string;
+}
+
+export interface HeatMapData {
+    interval: string;
+    time_slot: string;
+    count: number;
+}
+
 const API_BASE_URL = 'https://api-dev.websitechat.in';
 
 // Get stored auth token
@@ -241,6 +258,84 @@ export const getCurrentUser = async (): Promise<any> => {
         return userData ? JSON.parse(userData) : null;
     } catch (error) {
         console.error('Error getting user data:', error);
+        return null;
+    }
+};
+
+// Get line chart data
+export const getLineChart = async (timeRange: string = '7d'): Promise<LineChartData | null> => {
+    try {
+        const token: string | null = await getAuthToken();
+        console.log('getLineChart - Token:', token ? 'Token exists' : 'No token found');
+        console.log('getLineChart - Making API request to:', `${API_BASE_URL}/v1/metrics/get-line-chart`);
+        console.log('getLineChart - TimeRange:', timeRange);
+        
+        const response = await axios.get(`${API_BASE_URL}/v1/metrics/get-line-chart`, {
+            params: { timeRange },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('getLineChart - Response status:', response.status);
+        console.log('getLineChart - Full response:', JSON.stringify(response.data, null, 2));
+        
+        if (response.data.status && response.data.data) {
+            console.log('getLineChart - Data extracted successfully');
+            return response.data.data;
+        } else {
+            console.log('getLineChart - No data in response');
+            return null;
+        }
+    } catch (err) {
+        console.error('getLineChart - Failed to fetch line chart data:', err);
+        if (axios.isAxiosError(err)) {
+            console.error('getLineChart - Axios error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message
+            });
+        }
+        return null;
+    }
+};
+
+// Get heat map data
+export const getHeatMap = async (days: string = '7d'): Promise<HeatMapData[] | null> => {
+    try {
+        const token: string | null = await getAuthToken();
+        console.log('getHeatMap - Token:', token ? 'Token exists' : 'No token found');
+        console.log('getHeatMap - Making API request to:', `${API_BASE_URL}/v1/metrics/get-heat-map`);
+        console.log('getHeatMap - Days:', days);
+        
+        const response = await axios.get(`${API_BASE_URL}/v1/metrics/get-heat-map`, {
+            params: { days },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('getHeatMap - Response status:', response.status);
+        console.log('getHeatMap - Full response:', JSON.stringify(response.data, null, 2));
+        
+        if (response.data.status && response.data.data) {
+            console.log('getHeatMap - Data extracted successfully');
+            return response.data.data;
+        } else {
+            console.log('getHeatMap - No data in response');
+            return null;
+        }
+    } catch (err) {
+        console.error('getHeatMap - Failed to fetch heat map data:', err);
+        if (axios.isAxiosError(err)) {
+            console.error('getHeatMap - Axios error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message
+            });
+        }
         return null;
     }
 };
