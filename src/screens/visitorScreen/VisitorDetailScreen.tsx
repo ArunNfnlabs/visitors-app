@@ -261,7 +261,7 @@ export default function VisitorDetailScreen() {
                         </Text>
                         <Text style={styles.headerStatus}>
                             {/* No online status in API, so just show email or blank */}
-                            {(visitorInfo && visitorInfo.email) ? visitorInfo.email : 'not available'}
+                            {(visitorInfo && visitorInfo.email) ? visitorInfo.email : 'N/A'}
                         </Text>
                     </View>
                 </View>
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     headerAvatar: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        // borderRadius: 20,
         backgroundColor: '#6c7ae0',
         justifyContent: 'center',
         alignItems: 'center',
@@ -325,9 +325,9 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     headerAvatarImage: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 30,
+        height: 30,
+        // borderRadius: 20,
         marginRight: 12,
         backgroundColor: '#e0e0e0',
     },
@@ -362,9 +362,9 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     botAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 30,
+        height: 30,
+        // borderRadius: 16,
         backgroundColor: '#ff6b35',
         justifyContent: 'center',
         alignItems: 'center',
@@ -374,9 +374,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     botAvatarImage: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 30,
+        height: 30,
+        // borderRadius: 16,
         marginRight: 12,
         backgroundColor: '#e0e0e0',
     },

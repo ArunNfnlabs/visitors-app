@@ -9,7 +9,6 @@ import {
     FlatList,
     Image,
     ListRenderItemInfo,
-    Modal,
     Pressable,
     SafeAreaView,
     StyleSheet,
@@ -19,6 +18,7 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import UserSidebar from '../../components/UserSidebar';
 import LoginScreen from '../auth/LoginScreen';
 
 const AVATAR_COLORS = [
@@ -70,7 +70,7 @@ export default function VisitorsListScreen() {
     const [page, setPage] = useState<number>(1);
     const [sortOrder, setSortOrder] = useState<string>('recent');
     const [user, setUser] = useState<User | null>(null);
-    const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
+    const [showSidebar, setShowSidebar] = useState<boolean>(false);
     const router = useRouter();
     const { logout } = useAuth();
     const [token, setToken] = useState<string | null>(null);
@@ -161,47 +161,53 @@ export default function VisitorsListScreen() {
 
         return (
             <Pressable style={styles.visitorCardWrapper} onPress={() => handleVisitorPress(item)}>
-                <View style={styles.visitorCard}>
+                <View style={styles.visitorCardHome}>
+                    <View style={styles.visitorCard}>
+                        <View style={[styles.profilePicFallback, { backgroundColor: bg, width: 40, height: 40 }]}>
+                            <Text style={[styles.profilePicFallbackText, { color }]}>
+                                {item.name && item.name.length > 0
+                                    ? item.name[0].toUpperCase()
+                                    : 'V'}
+                            </Text>
+                        </View>
 
-                    <View style={[styles.profilePicFallback, { backgroundColor: bg, width: 40, height: 40 }]}>
-                        <Text style={[styles.profilePicFallbackText, { color }]}>
-                            {item.name && item.name.length > 0
-                                ? item.name[0].toUpperCase()
-                                : 'V'}
-                        </Text>
+                        <View style={styles.visitorInfo}>
+                            <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
+                            {item?.firstMessage && (
+                                <View style={styles.infoRow}>
+                                    <Icon name="chat" size={14} color="#999" style={{ position: 'relative', top: 2, ...styles.infoIcon }} />
+                                    <Text style={styles.infoText}>
+                                        {item.firstMessage.length > 20
+                                            ? `${item.firstMessage.substring(0, 20)}...`
+                                            : item.firstMessage}
+                                    </Text>
+                                </View>
+                            )}
+
+                        </View>
+
+                        <View style={styles.lastSeenBadge}>
+                            <Icon name="access-time" size={14} color="#999" style={styles.infoIcon} />
+                            <Text style={styles.lastSeenBadgeText}>
+                                {item.lastSeenTime ?? ''}
+                            </Text>
+                        </View>
                     </View>
 
-                    <View style={styles.visitorInfo}>
-                        <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
+                    <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
                         <View style={styles.infoRow}>
                             <Icon name="email" size={14} color="#999" style={styles.infoIcon} />
-                            <Text style={styles.infoText}>{item?.email ?? 'not available'}</Text>
+                            <Text style={styles.infoText}>{item?.email ?? 'N/A'}</Text>
                         </View>
                         <View style={styles.infoRow}>
                             <Icon name="phone" size={14} color="#999" style={styles.infoIcon} />
-                            <Text style={styles.infoText}>{item?.phone ?? 'not available'}</Text>
+                            <Text style={styles.infoText}>{item?.phone ?? 'N/A'}</Text>
                         </View>
-                        {item?.firstMessage && (
-                            <View style={styles.infoRow}>
-                                <Icon name="chat" size={14} color="#999" style={styles.infoIcon} />
-                                <Text style={styles.infoText}>
-                                    {item.firstMessage.length > 20
-                                        ? `${item.firstMessage.substring(0, 20)}...`
-                                        : item.firstMessage}
-                                </Text>
-                            </View>
-                        )}
+
                         <View style={styles.infoRow}>
                             <Icon name="location-on" size={14} color="#999" style={styles.infoIcon} />
-                            <Text style={styles.infoText}>{item.location ?? 'not available'}</Text>
+                            <Text style={styles.infoText}>{item.location ?? 'N/A'}</Text>
                         </View>
-                    </View>
-
-                    <View style={styles.lastSeenBadge}>
-                        <Icon name="access-time" size={14} color="#999" style={styles.infoIcon} />
-                        <Text style={styles.lastSeenBadgeText}>
-                            {item.lastSeenTime ?? ''}
-                        </Text>
                     </View>
                 </View>
             </Pressable>
@@ -210,41 +216,6 @@ export default function VisitorsListScreen() {
 
     // Remove handleSelectSortOrder and renderSortModal, not needed anymore
 
-    const renderLogoutModal = () => (
-        <Modal
-            visible={showLogoutModal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowLogoutModal(false)}
-        >
-            <Pressable style={styles.modalOverlay} onPress={() => setShowLogoutModal(false)}>
-                <View style={styles.logoutModalContent}>
-                    <Text style={styles.logoutModalTitle}>Logout</Text>
-                    <Text style={styles.logoutModalMessage}>Are you sure you want to logout?</Text>
-                    <View style={styles.logoutModalActions}>
-                        <TouchableOpacity
-                            style={[styles.logoutModalButton, styles.logoutModalCancel]}
-                            onPress={() => setShowLogoutModal(false)}
-                        >
-                            <Text style={styles.logoutModalCancelText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.logoutModalButton, styles.logoutModalConfirm]}
-                            onPress={async () => {
-                                setShowLogoutModal(false);
-                                router.replace('/signin');
-                                await handleLogout();
-                            }}
-                        >
-                            <Text style={styles.logoutModalConfirmText}>Logout</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Pressable>
-        </Modal>
-    );
-
-    // Inline sort toggle button instead of modal
     const renderHeader = () => (
         <View style={{ position: 'relative' }}>
             <View style={styles.headerContainer}>
@@ -255,7 +226,7 @@ export default function VisitorsListScreen() {
                     </View>
                     <TouchableOpacity
                         style={styles.profileIconContainer}
-                        onPress={() => setShowLogoutModal(true)}
+                        onPress={() => setShowSidebar(true)}
                     >
                         <View style={styles.profileIcon}>
                             {user?.profilePic ? (
@@ -304,8 +275,16 @@ export default function VisitorsListScreen() {
                 <View style={styles.titleSection}>
                     <Text style={styles.allVisitorsTitle}>All Visitors</Text>
                 </View>
-                {/* No sort modal anymore */}
-                {renderLogoutModal()}
+                <UserSidebar
+                    visible={showSidebar}
+                    onClose={() => setShowSidebar(false)}
+                    user={user}
+                    onLogout={async () => {
+                        setShowSidebar(false);
+                        router.replace('/signin');
+                        await handleLogout();
+                    }}
+                />
             </View>
         </View>
     );
@@ -474,17 +453,37 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     visitorCardWrapper: {
-        marginBottom: 16,
+        marginBottom: 12,
     },
-    visitorCard: {
-        flexDirection: 'row',
+    visitorCardHome: {
+        flexDirection: 'column',
         alignItems: 'flex-start',
         backgroundColor: '#fff',
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#eee',
+        // paddingVertical: 16,
+        // paddingHorizontal: 16,
+        width: '100%',
+        shadowColor: '#000',
+    },
+    visitorCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#fff',
         paddingVertical: 16,
         paddingHorizontal: 16,
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        gap: 10,
+        marginBottom: 10,
+        borderBottomWidth: 1,
+        paddingBottom: 10,
+        borderBottomColor: '#eee',
+        // borderWidth: 1,
+        // borderColor: '#eee',
+        // paddingVertical: 16,
+        // paddingHorizontal: 16,
         width: '100%',
         shadowColor: '#000',
     },
@@ -518,98 +517,28 @@ const styles = StyleSheet.create({
     visitorInfo: {
         flex: 1,
         justifyContent: 'center',
-        marginLeft: 12,
+        // marginLeft: 12,
     },
     visitorName: {
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'flex-start',
         marginBottom: 4,
     },
     infoIcon: {
-        marginRight: 8,
+        marginRight: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     infoText: {
         fontSize: 14,
         color: '#666',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 16,
-        minWidth: 220,
-        elevation: 4,
-    },
-    modalOption: {
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-    },
-    modalOptionText: {
-        fontSize: 16,
-        color: '#333',
-    },
-    modalOptionTextSelected: {
-        color: '#007AFF',
-        fontWeight: 'bold',
-    },
-    logoutModalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 24,
-        minWidth: 260,
-        alignItems: 'center',
-        elevation: 5,
-    },
-    logoutModalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
-    },
-    logoutModalMessage: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 24,
-        textAlign: 'center',
-    },
-    logoutModalActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-    },
-    logoutModalButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginHorizontal: 4,
-    },
-    logoutModalCancel: {
-        backgroundColor: '#f0f0f0',
-    },
-    logoutModalConfirm: {
-        backgroundColor: '#ff3b30',
-    },
-    logoutModalCancelText: {
-        color: '#333',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    logoutModalConfirmText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
     },
     noVisitorsImage: {
         width: 100,

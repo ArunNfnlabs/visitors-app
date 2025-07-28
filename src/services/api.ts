@@ -25,10 +25,10 @@ export interface User {
 }
 
 export interface LineChartData {
-    dailyCounts: Array<{
+    dailyCounts: {
         label: string;
         count: number;
-    }>;
+    }[];
     currentPeriodTotalChats: number;
     percentageChangeInTotalChats: string;
     currentPeriodAverageChats: string;
@@ -41,7 +41,7 @@ export interface HeatMapData {
     count: number;
 }
 
-const API_BASE_URL = 'https://api-dev.websitechat.in';
+const API_BASE_URL = 'https://api.websitechat.in';
 
 // Get stored auth token
 const getAuthToken = async (): Promise<string | null> => {
@@ -118,9 +118,9 @@ export const getVisitors = async ({
                 return {
                     id: v.sessionId?.toString() ?? '',
                     name: v.userDetails?.name?.trim() || 'Visitor',
-                    email: v.userDetails?.email || 'not available',
-                    phone: v.userDetails?.phone || 'not available',
-                    location: v.userDetails?.location || 'not available',
+                    email: v.userDetails?.email || 'N/A',
+                    phone: v.userDetails?.phone || 'N/A',
+                    location: v.userDetails?.location || 'N/A',
                     lastSeenTime: formatLastSeen(v.startedAt),
                     firstMessage: firstMessage,
                 };
