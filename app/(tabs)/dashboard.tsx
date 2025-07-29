@@ -65,7 +65,7 @@ export default function ChatScreen() {
     };
 
     const handleSeeAllChats = () => {
-        router.push('/visitor-detail');
+        router.push('/');
     };
 
     const [token, setToken] = useState<string | null>(null);

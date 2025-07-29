@@ -126,7 +126,7 @@ export default function VisitorsListScreen() {
         };
         fetchUser();
     }, []);
-    
+
     useEffect(() => {
         fetchVisitors(1, false);
     }, [search, sortOrder, page]);
@@ -303,7 +303,7 @@ export default function VisitorsListScreen() {
                 {renderHeader()}
 
                 <View style={styles.contentContainer}>
-                    {filteredVisitors.length === 0 && (
+                    {filteredVisitors.length === 0 && !loading &&  (
                         <View style={styles.noVisitorsContainer}>
                             {/* Fallback: Use an Icon instead of missing image */}
                             <View style={styles.noVisitorsImageFallback}>
