@@ -8,8 +8,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: '#6366F1',
+        tabBarInactiveTintColor: '#9CA3AF',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: true,
@@ -42,29 +42,26 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
-          tabBarStyle: {
-            display: 'none',
-          },
+          title: 'Visitors',
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol 
               size={24} 
-              name="house" 
-              color={focused ? '#007AFF' : '#8E8E93'} 
+              name="person.2.fill" 
+              color={focused ? '#6366F1' : '#9CA3AF'} 
             />
           ),
           headerShown: false,
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="dashboard"
         options={{
-          title: 'Chat',
+          title: 'Dashboard',
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol 
               size={24} 
-              name="message" 
-              color={focused ? '#007AFF' : '#8E8E93'} 
+              name="chart.bar.fill" 
+              color={focused ? '#6366F1' : '#9CA3AF'} 
             />
           ),
           headerShown: false,

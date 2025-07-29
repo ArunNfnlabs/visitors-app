@@ -4,9 +4,9 @@ import {
     Dimensions,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getHeatMap, HeatMapData } from '../services/api';
 
@@ -61,88 +61,83 @@ export default function HeatMapChart({ days = '7d' }: HeatMapChartProps) {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     };
 
-    const renderBarChart = () => {
+    const renderLineChart = () => {
         if (!heatMapData) return null;
 
         const dailyActivity = getDailyActivity();
-        const maxActivity = Math.max(...dailyActivity.map(d => d.total), 1);
-        const chartHeight = 120;
-        const barWidth = (width - 120) / dailyActivity.length - 8;
+        const totalActivity = dailyActivity.reduce((sum, day) => sum + day.total, 0);
+        
+        if (totalActivity === 0) {
+            return (
+                <View style={styles.noDataContainer}>
+                    <Text style={styles.noDataText}>No activity data available</Text>
+                </View>
+            );
+        }
+
+        const chartConfig = {
+            backgroundColor: '#F8FAFC',
+            backgroundGradientFrom: '#F8FAFC',
+            backgroundGradientTo: '#F8FAFC',
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(71, 85, 105, ${opacity})`,
+            style: {
+                borderRadius: 12,
+            },
+            propsForDots: {
+                r: '4',
+                strokeWidth: '2',
+                stroke: '#6366F1',
+            },
+            propsForLabels: {
+                fontSize: 10,
+                fontWeight: '500',
+            },
+        };
+
+        const data = {
+            labels: dailyActivity.map(day => formatDate(day.date)),
+            datasets: [
+                {
+                    data: dailyActivity.map(day => day.total),
+                    color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+                    strokeWidth: 3,
+                },
+            ],
+        };
 
         return (
             <View style={styles.chartContainer}>
                 <View style={styles.chartHeader}>
                     <View style={styles.chartTitleContainer}>
-                        <Icon name="bar-chart" size={20} color="#007AFF" />
-                        <Text style={styles.chartTitle}>Daily Activity</Text>
+                        <Icon name="show-chart" size={18} color="#6366F1" />
+                        <Text style={styles.chartTitle}>Activity Distribution</Text>
                     </View>
-                    <TouchableOpacity style={styles.timeRangeButton}>
-                        <Text style={styles.timeRangeText}>Last 7 Days</Text>
-                        <Icon name="keyboard-arrow-down" size={20} color="#666" />
-                    </TouchableOpacity>
+                    <Text style={styles.timeRangeText}>Last 7 Days</Text>
                 </View>
 
-                <View style={styles.chartArea}>
-                    {/* Y-axis labels */}
-                    <View style={styles.yAxis}>
-                        {[0, 20, 40, 60, 80].map((value) => (
-                            <Text key={value} style={styles.yAxisLabel}>
-                                {value}
-                            </Text>
-                        ))}
-                    </View>
-
-                    {/* Chart content */}
-                    <View style={styles.chartContent}>
-                        {/* Grid lines */}
-                        {[0, 20, 40, 60, 80].map((value) => (
-                            <View
-                                key={value}
-                                style={[
-                                    styles.gridLine,
-                                    { top: (chartHeight * value) / 80 }
-                                ]}
-                            />
-                        ))}
-
-                        {/* Bar chart */}
-                        <View style={styles.barChart}>
-                            {dailyActivity.map((day, index) => {
-                                const barHeight = (chartHeight * day.total) / maxActivity;
-                                const x = (index * (barWidth + 8)) + 4;
-                                
-                                return (
-                                    <View key={day.date} style={styles.barContainer}>
-                                        <View
-                                            style={[
-                                                styles.bar,
-                                                {
-                                                    height: barHeight,
-                                                    backgroundColor: day.total > 0 ? '#ff6b35' : '#f0f0f0',
-                                                }
-                                            ]}
-                                        />
-                                        {day.total > 0 && (
-                                            <Text style={styles.barValue}>
-                                                {day.total}
-                                            </Text>
-                                        )}
-                                    </View>
-                                );
-                            })}
-                        </View>
-
-                        {/* X-axis labels */}
-                        <View style={styles.xAxis}>
-                            {dailyActivity.map((day) => (
-                                <View key={day.date} style={styles.xAxisLabelContainer}>
-                                    <Text style={styles.xAxisLabel}>
-                                        {formatDate(day.date)}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
-                    </View>
+                <View style={styles.chartContent}>
+                    <LineChart
+                        data={data}
+                        width={width - 48}
+                        height={180}
+                        chartConfig={chartConfig}
+                        bezier
+                        style={styles.chart}
+                        withDots={true}
+                        withShadow={false}
+                        withInnerLines={true}
+                        withOuterLines={true}
+                        withVerticalLines={false}
+                        withHorizontalLines={true}
+                        fromZero={true}
+                    />
+                    
+                    {/* <View style={styles.summaryContainer}>
+                        <Text style={styles.summaryTitle}>Total Activity</Text>
+                        <Text style={styles.summaryValue}>{totalActivity}</Text>
+                    </View> */}
                 </View>
             </View>
         );
@@ -151,7 +146,7 @@ export default function HeatMapChart({ days = '7d' }: HeatMapChartProps) {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color="#6366F1" />
             </View>
         );
     }
@@ -168,39 +163,48 @@ export default function HeatMapChart({ days = '7d' }: HeatMapChartProps) {
 
     return (
         <View style={styles.container}>
-            {renderBarChart()}
+            {renderLineChart()}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         padding: 16,
-        marginVertical: 8,
+        marginBottom: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     loadingContainer: {
-        padding: 40,
+        padding: 32,
         alignItems: 'center',
     },
     errorContainer: {
-        padding: 40,
+        padding: 32,
         alignItems: 'center',
     },
     errorText: {
-        fontSize: 18,
-        color: '#666',
+        fontSize: 14,
+        color: '#64748B',
+        textAlign: 'center',
+    },
+    noDataContainer: {
+        padding: 32,
+        alignItems: 'center',
+    },
+    noDataText: {
+        fontSize: 14,
+        color: '#64748B',
         textAlign: 'center',
     },
     chartContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         padding: 16,
     },
     chartHeader: {
@@ -214,96 +218,42 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     chartTitle: {
-        fontSize: 18,
+        fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        marginLeft: 8,
-    },
-    timeRangeButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        color: '#1E293B',
+        marginLeft: 6,
     },
     timeRangeText: {
-        fontSize: 14,
-        color: '#666',
-        marginRight: 4,
-    },
-    chartArea: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    yAxis: {
-        width: 40,
-        marginRight: 8,
-    },
-    yAxisLabel: {
         fontSize: 12,
-        color: '#666',
-        textAlign: 'right',
-        height: 24,
-        lineHeight: 24,
+        color: '#64748B',
+        fontWeight: '500',
     },
     chartContent: {
-        flex: 1,
-        position: 'relative',
-        marginBottom: 20,
-    },
-    gridLine: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        height: 1,
-        backgroundColor: '#e0e0e0',
-    },
-    barChart: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        paddingHorizontal: 20,
-        paddingBottom: 30,
-    },
-    barContainer: {
-        flex: 1,
         alignItems: 'center',
-        marginHorizontal: 4,
     },
-    bar: {
-        width: '100%',
-        borderRadius: 4,
-        minHeight: 4,
+    chart: {
+        marginVertical: 4,
+        borderRadius: 12,
     },
-    barValue: {
-        fontSize: 10,
-        color: '#fff',
-        fontWeight: '600',
-        marginTop: 2,
-        textAlign: 'center',
-    },
-    xAxis: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginTop: 8,
-    },
-    xAxisLabelContainer: {
-        flex: 1,
+    summaryContainer: {
+        marginTop: 12,
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-    xAxisLabel: {
-        fontSize: 11,
-        color: '#666',
-        textAlign: 'center',
+    summaryTitle: {
+        fontSize: 12,
+        color: '#64748B',
         fontWeight: '500',
+        marginBottom: 2,
+    },
+    summaryValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1E293B',
     },
 }); 

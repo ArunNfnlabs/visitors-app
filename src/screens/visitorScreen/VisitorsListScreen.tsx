@@ -126,9 +126,10 @@ export default function VisitorsListScreen() {
         };
         fetchUser();
     }, []);
+    
     useEffect(() => {
         fetchVisitors(1, false);
-    }, [search, sortOrder]);
+    }, [search, sortOrder, page]);
 
     const executeLoadMoreVisitors = useCallback(async () => {
         if (loading || !hasMore) return;

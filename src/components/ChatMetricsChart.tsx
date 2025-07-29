@@ -4,9 +4,9 @@ import {
     Dimensions,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
+import { BarChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getLineChart, LineChartData } from '../services/api';
 
@@ -18,186 +18,131 @@ interface ChatMetricsChartProps {
 
 export default function ChatMetricsChart({ timeRange = '7d' }: ChatMetricsChartProps) {
     const [chartData, setChartData] = useState<LineChartData | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [selectedTimeRange, setSelectedTimeRange] = useState<string>(timeRange);
 
     useEffect(() => {
-        fetchChartData();
+        executeFetchChartData();
     }, [selectedTimeRange]);
 
-    const fetchChartData = async () => {
-        setLoading(true);
+    const executeFetchChartData = async (): Promise<void> => {
+        setIsLoading(true);
         try {
-            console.log('Fetching chart data for timeRange:', selectedTimeRange);
             const data = await getLineChart(selectedTimeRange);
-            console.log('Chart data received:', data);
-            setChartData(data);
-        } catch (error) {
-            console.error('Error fetching chart data:', error);
+            setChartData(data as LineChartData);
+        } catch (err) {
+            console.error('Error fetching chart data:', err);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            day: 'numeric', 
-            month: 'short' 
+    const formatDateLabel = (dateString: string): string => {
+        const date: Date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'short',
         });
     };
 
-    const renderMetricCard = (title: string, value: string | number, percentage: string, icon: string) => (
-        <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-                <View style={styles.metricIcon}>
-                    <Icon name={icon} size={20} color="#007AFF" />
-                </View>
-                <Text style={styles.metricTitle}>{title}</Text>
-            </View>
-            <View style={styles.metricValueContainer}>
-                <Text style={styles.metricValue}>{value}</Text>
-                <View style={[
-                    styles.percentageBadge,
-                    { backgroundColor: percentage.startsWith('-') ? '#ffebee' : '#e8f5e8' }
-                ]}>
-                    <Text style={[
-                        styles.percentageText,
-                        { color: percentage.startsWith('-') ? '#d32f2f' : '#2e7d32' }
-                    ]}>
-                        {percentage}
-                    </Text>
-                </View>
-            </View>
-        </View>
-    );
-
-    const renderLineChart = () => {
-        if (!chartData?.dailyCounts) {
-            console.log('No chart data available');
-            return null;
-        }
-
-        console.log('Rendering chart with data:', chartData.dailyCounts);
-        
-        const maxCount = Math.max(...chartData.dailyCounts.map(d => d.count), 1);
-        const chartHeight = 120;
-        const chartWidth = width - 80;
-        const pointRadius = 4;
-
-        console.log('Chart dimensions:', { maxCount, chartHeight, chartWidth, pointRadius });
-
-        // Calculate data points
-        const dataPoints = chartData.dailyCounts.map((point, index) => {
-            const x = (chartWidth * index) / (chartData.dailyCounts.length - 1);
-            const y = chartHeight - (chartHeight * point.count) / maxCount;
-            return { x, y, count: point.count };
-        });
-
-        console.log('Calculated data points:', dataPoints);
-
+    const renderMetricCard = (
+        title: string,
+        value: string | number,
+        percentage: string,
+        icon: string
+    ): React.ReactElement => {
+        const isNegative: boolean = percentage.startsWith('-');
         return (
-            <View style={styles.chartContainer}>
-                <View style={styles.chartHeader}>
-                    <View style={styles.chartTitleContainer}>
-                        <Icon name="chat" size={20} color="#007AFF" />
-                        <Text style={styles.chartTitle}>All Chats</Text>
+            <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                    <View style={styles.metricIcon}>
+                        <Icon name={icon} size={16} color="#6366F1" />
                     </View>
-                    <TouchableOpacity style={styles.timeRangeButton}>
-                        <Text style={styles.timeRangeText}>Last 7 Days</Text>
-                        <Icon name="keyboard-arrow-down" size={20} color="#666" />
-                    </TouchableOpacity>
+                    <Text style={styles.metricTitle}>{title}</Text>
                 </View>
-
-                <View style={styles.chartArea}>
-                    {/* Y-axis labels */}
-                    <View style={styles.yAxis}>
-                        {[0, 10, 20, 30, 40].map((value) => (
-                            <Text key={value} style={styles.yAxisLabel}>
-                                {value}
-                            </Text>
-                        ))}
-                    </View>
-
-                    {/* Chart content */}
-                    <View style={styles.chartContent}>
-                        {/* Grid lines */}
-                        {[0, 10, 20, 30, 40].map((value) => (
-                            <View
-                                key={value}
-                                style={[
-                                    styles.gridLine,
-                                    { top: (chartHeight * value) / 40 }
-                                ]}
-                            />
-                        ))}
-
-                        {/* Simple line chart with data points */}
-                        <View style={styles.lineChart}>
-                            {/* Draw data points */}
-                            {dataPoints.map((point, index) => (
-                                <View
-                                    key={`point-${index}`}
-                                    style={[
-                                        styles.dataPoint,
-                                        {
-                                            left: point.x - pointRadius,
-                                            top: point.y - pointRadius,
-                                        }
-                                    ]}
-                                />
-                            ))}
-                            
-                            {/* Draw simple connecting lines using View borders */}
-                            {dataPoints.map((point, index) => {
-                                if (index === 0) return null;
-                                
-                                const prevPoint = dataPoints[index - 1];
-                                const midX = (prevPoint.x + point.x) / 2;
-                                const midY = (prevPoint.y + point.y) / 2;
-                                const distance = Math.sqrt(
-                                    Math.pow(point.x - prevPoint.x, 2) + 
-                                    Math.pow(point.y - prevPoint.y, 2)
-                                );
-                                
-                                return (
-                                    <View
-                                        key={`line-${index}`}
-                                        style={[
-                                            styles.connectingLine,
-                                            {
-                                                left: prevPoint.x,
-                                                top: prevPoint.y,
-                                                width: distance,
-                                                height: 2,
-                                                backgroundColor: '#ff6b35',
-                                            }
-                                        ]}
-                                    />
-                                );
-                            })}
-                        </View>
-
-                        {/* X-axis labels */}
-                        <View style={styles.xAxis}>
-                            {chartData.dailyCounts.map((point, index) => (
-                                <View key={index} style={styles.xAxisLabelContainer}>
-                                    <Text style={styles.xAxisLabel}>
-                                        {formatDate(point.label)}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
+                <View style={styles.metricValueContainer}>
+                    <Text style={styles.metricValue}>{value}</Text>
+                    <View
+                        style={[
+                            styles.percentageBadge,
+                            { backgroundColor: isNegative ? '#FEF2F2' : '#F0FDF4' },
+                        ]}
+                    >
+                        <Text
+                            style={[
+                                styles.percentageText,
+                                { color: isNegative ? '#DC2626' : '#16A34A' },
+                            ]}
+                        >
+                            {percentage}
+                        </Text>
                     </View>
                 </View>
             </View>
         );
     };
 
-    if (loading) {
+    const renderBarChart = (): React.ReactElement | null => {
+        if (!chartData?.dailyCounts) {
+            return null;
+        }
+
+        const chartConfig = {
+            backgroundColor: '#F8FAFC',
+            backgroundGradientFrom: '#F8FAFC',
+            backgroundGradientTo: '#F8FAFC',
+            decimalPlaces: 0,
+            color: (opacity: number = 1) => `rgba(99, 102, 241, ${opacity})`,
+            labelColor: (opacity: number = 1) => `rgba(71, 85, 105, ${opacity})`,
+            style: {
+                borderRadius: 12,
+            },
+            barPercentage: 0.6,
+            propsForLabels: {
+                fontSize: 10,
+                fontWeight: '500',
+            },
+        };
+
+        const data = {
+            labels: chartData.dailyCounts.map(point => formatDateLabel(point.label)),
+            datasets: [
+                {
+                    data: chartData.dailyCounts.map(point => point.count),
+                },
+            ],
+        };
+
+        return (
+            <View style={styles.chartContainer}>
+                <View style={styles.chartHeader}>
+                    <View style={styles.chartTitleContainer}>
+                        <Icon name="bar-chart" size={18} color="#6366F1" />
+                        <Text style={styles.chartTitle}>Chat Activity</Text>
+                    </View>
+                    <Text style={styles.timeRangeText}>Last 7 Days</Text>
+                </View>
+                <BarChart
+                    data={data}
+                    width={width - 48}
+                    height={180}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    chartConfig={chartConfig}
+                    verticalLabelRotation={0}
+                    showBarTops={true}
+                    showValuesOnTopOfBars={true}
+                    fromZero={true}
+                    style={styles.chart}
+                />
+            </View>
+        );
+    };
+
+    if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color="#6366F1" />
             </View>
         );
     }
@@ -214,202 +159,149 @@ export default function ChatMetricsChart({ timeRange = '7d' }: ChatMetricsChartP
 
     return (
         <View style={styles.container}>
-            {/* Metrics Cards */}
             <View style={styles.metricsContainer}>
-                {chartData && (
-                    <>
-                        {renderMetricCard(
-                            'TOTAL CHATS',
-                            chartData.currentPeriodTotalChats,
-                            chartData.percentageChangeInTotalChats,
-                            'trending-up'
-                        )}
-                        <View style={styles.metricsDivider} />
-                        {renderMetricCard(
-                            'AVG CHATS',
-                            chartData.currentPeriodAverageChats,
-                            chartData.percentageChangeInAverageChats,
-                            'analytics'
-                        )}
-                    </>
+                {renderMetricCard(
+                    'TOTAL CHATS',
+                    chartData.currentPeriodTotalChats,
+                    chartData.percentageChangeInTotalChats,
+                    'trending-up'
+                )}
+                <View style={styles.metricsDivider} />
+                {renderMetricCard(
+                    'AVG CHATS',
+                    chartData.currentPeriodAverageChats,
+                    chartData.percentageChangeInAverageChats,
+                    'analytics'
                 )}
             </View>
-
-            {/* Line Chart */}
-            {renderLineChart()}
+            {renderBarChart()}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         padding: 16,
-        margin: 16,
+        marginBottom: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        fontFamily: 'inter',
     },
     loadingContainer: {
-        padding: 40,
+        padding: 32,
         alignItems: 'center',
+        fontFamily: 'inter',
     },
     errorContainer: {
-        padding: 40,
+        padding: 32,
         alignItems: 'center',
+        fontFamily: 'inter',
     },
     errorText: {
-        fontSize: 18,
-        color: '#666',
+        fontSize: 14,
+        color: '#64748B',
         textAlign: 'center',
+        fontFamily: 'inter',
     },
     metricsContainer: {
         flexDirection: 'row',
-        marginBottom: 24,
+        fontFamily: 'inter',
+        marginBottom: 16,
     },
     metricCard: {
         flex: 1,
+        fontFamily: 'inter',
         alignItems: 'center',
     },
     metricHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        fontFamily: 'inter',
+        marginBottom: 6,
     },
     metricIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#f0f8ff',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 8,
+        marginRight: 6,
+        fontFamily: 'inter',
     },
     metricTitle: {
-        fontSize: 12,
-        color: '#666',
+        fontSize: 10,
+        color: '#64748B',
         fontWeight: '500',
+        fontFamily: 'inter',
     },
     metricValueContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        fontFamily: 'inter',
     },
     metricValue: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-        marginRight: 8,
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginRight: 6,
+        fontFamily: 'inter',
     },
     percentageBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        fontFamily: 'inter',
     },
     percentageText: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
+        fontFamily: 'inter',
     },
     metricsDivider: {
         width: 1,
-        backgroundColor: '#e0e0e0',
-        marginHorizontal: 16,
+        backgroundColor: '#E2E8F0',
+        marginHorizontal: 12,
+        fontFamily: 'inter',
     },
     chartContainer: {
-        marginTop: 16,
+        alignItems: 'center',
+        fontFamily: 'inter',
     },
     chartHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+        fontFamily: 'inter',
+        width: '100%',
     },
     chartTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        fontFamily: 'inter',
     },
     chartTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        marginLeft: 8,
-    },
-    timeRangeButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        color: '#1E293B',
+        fontFamily: 'inter',
+        marginLeft: 6,
     },
     timeRangeText: {
-        fontSize: 14,
-        color: '#333',
-        marginRight: 4,
-    },
-    chartArea: {
-        flexDirection: 'row',
-        height: 160,
-    },
-    yAxis: {
-        width: 30,
-        justifyContent: 'space-between',
-        paddingRight: 8,
-    },
-    yAxisLabel: {
         fontSize: 12,
-        color: '#666',
-        textAlign: 'right',
-    },
-    chartContent: {
-        flex: 1,
-        position: 'relative',
-        marginBottom: 20,
-    },
-    gridLine: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        height: 1,
-        backgroundColor: '#f0f0f0',
-    },
-    lineChart: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 40,
-    },
-    dataPoint: {
-        position: 'absolute',
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#ff6b35',
-    },
-    xAxis: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginTop: 8,
-    },
-    xAxisLabelContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    xAxisLabel: {
-        fontSize: 11,
-        color: '#666',
-        textAlign: 'center',
+        color: '#64748B',
         fontWeight: '500',
+        fontFamily: 'inter',
     },
-    connectingLine: {
-        position: 'absolute',
-        backgroundColor: '#ff6b35',
+    chart: {
+        marginVertical: 4,
+        borderRadius: 12,
+        fontFamily: 'inter',
     },
-}); 
+});
