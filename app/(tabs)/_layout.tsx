@@ -42,12 +42,12 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Visitors',
+          tabBarShowLabel: false,
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={24} 
-              name="person.2.fill" 
-              color={focused ? '#6366F1' : '#9CA3AF'} 
+            <IconSymbol
+              size={24}
+              name="person.2.fill"
+              color={focused ? '#6366F1' : '#9CA3AF'}
             />
           ),
           headerShown: false,
@@ -56,12 +56,12 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          tabBarShowLabel: false,
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={24} 
-              name="chart.bar.fill" 
-              color={focused ? '#6366F1' : '#9CA3AF'} 
+            <IconSymbol
+              size={24}
+              name="chart.bar.fill"
+              color={focused ? '#6366F1' : '#9CA3AF'}
             />
           ),
           headerShown: false,

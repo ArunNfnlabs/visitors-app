@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import ChatMetricsChart from '../../src/components/ChatMetricsChart';
 import Header from '../../src/components/Header';
 import HeatMapChart from '../../src/components/HeatMapChart';
-import { getUser, getVisitors, logoutUser, User, Visitor } from '../../src/services/api';
+import { getUsageData, getUser, getVisitors, logoutUser, UsageData, User, Visitor } from '../../src/services/api';
 import LoginScreen from '../signin';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,18 +14,29 @@ export default function ChatScreen() {
     const router = useRouter();
     const [recentVisitors, setRecentVisitors] = useState<Visitor[]>([]);
     const [loading, setLoading] = useState(true);
+    const [usageData, setUsageData] = useState<UsageData | null>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [search, setSearch] = useState('');
+    const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent');
 
     useEffect(() => {
-        fetchRecentVisitors();
+        fetchData();
     }, []);
 
-    const fetchRecentVisitors = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const visitors = await getVisitors({ limit: 3 });
+            const [visitors, usage, userData] = await Promise.all([
+                getVisitors({ limit: 3 }),
+                getUsageData(),
+                getUser()
+            ]);
             setRecentVisitors(visitors);
+            setUsageData(usage);
+            setUser(userData);
         } catch (error) {
-            console.error('Error fetching recent visitors:', error);
+            console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }
@@ -43,7 +54,7 @@ export default function ChatScreen() {
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays === 1) return 'Yesterday';
-
+        
         return lastSeen.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -57,20 +68,6 @@ export default function ChatScreen() {
         router.push('/visitor-detail');
     };
 
-
-    const [user, setUser] = useState<User | null>(null);
-    const [showSidebar, setShowSidebar] = useState(false);
-    const [search, setSearch] = useState('');
-    const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent');
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            const user = await getUser();
-            setUser(user);
-        };
-        fetchUser();
-    }, []);
-
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -83,7 +80,6 @@ export default function ChatScreen() {
         };
         fetchToken();
     }, []);
-
 
     if (isLoading) {
         return (
@@ -125,13 +121,15 @@ export default function ChatScreen() {
                             </View>
                             <View style={styles.creditsWidget}>
                                 <Icon name="monetization-on" size={20} color="#F59E0B" />
-                                <Text style={styles.creditsText}>281 Credits available</Text>
+                                <Text style={styles.creditsText}>
+                                    {usageData ? `${usageData.totalCreditsAvailable} Credits available` : 'Loading...'}
+                                </Text>
                             </View>
                         </View>
-
+                        
                         <Text style={styles.assistantName}>AI Help Desk</Text>
                         <Text style={styles.lastUpdate}>Last update : 22 Jul, 2025</Text>
-
+                        
                         <View style={styles.assistantDetails}>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Website</Text>
@@ -145,9 +143,25 @@ export default function ChatScreen() {
                                 <Text style={styles.detailLabel}>Subscription</Text>
                                 <View style={styles.subscriptionInfo}>
                                     <View style={styles.subscriptionDot} />
-                                    <Text style={styles.detailValue}>Free</Text>
+                                    <Text style={styles.detailValue}>
+                                        {usageData?.currentPlanDetails?.name || 'Loading...'}
+                                    </Text>
                                 </View>
                             </View>
+                            {usageData && (
+                                <>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Characters Used</Text>
+                                        <Text style={styles.detailValue}>
+                                            {usageData.charactersUsed.toLocaleString()} / {usageData.totalCharacters.toLocaleString()}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailLabel}>Plan Expiry</Text>
+                                        <Text style={styles.detailValue}>{usageData.planExpiryDate}</Text>
+                                    </View>
+                                </>
+                            )}
                         </View>
                     </View>
 
@@ -158,7 +172,7 @@ export default function ChatScreen() {
                     {/* Recent Visitors */}
                     <View style={styles.recentVisitorsContainer}>
                         <Text style={styles.recentVisitorsTitle}>RECENT VISITORS</Text>
-
+                        
                         {loading ? (
                             <View style={styles.loadingContainer}>
                                 <Text style={styles.loadingText}>Loading visitors...</Text>
@@ -176,7 +190,7 @@ export default function ChatScreen() {
                                         </View>
                                     </View>
                                 ))}
-
+                                
                                 <TouchableOpacity style={styles.seeAllButton} onPress={handleSeeAllChats}>
                                     <Icon name="chat-bubble-outline" size={16} color="#475569" />
                                     <Text style={styles.seeAllText}>See all chats</Text>
@@ -203,6 +217,11 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 12,
         paddingTop: 8,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     assistantCard: {
         backgroundColor: '#FFFFFF',
@@ -381,10 +400,6 @@ const styles = StyleSheet.create({
         color: '#475569',
         marginLeft: 8,
     },
-    loadingContainer: {
-        padding: 20,
-        alignItems: 'center',
-    },
     loadingText: {
         fontSize: 14,
         color: '#64748B',
@@ -397,4 +412,4 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#64748B',
     },
-}); 
+});

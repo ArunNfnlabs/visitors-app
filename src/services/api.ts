@@ -41,6 +41,48 @@ export interface HeatMapData {
     count: number;
 }
 
+export interface UsageData {
+    charactersPercentage: number;
+    creditPercentage: number;
+    charactersUsed: number;
+    creditsUsed: number;
+    totalCharactersAvailable: number;
+    totalCreditsAvailable: number;
+    totalCharacters: number;
+    totalCredits: number;
+    addOnCharacters: number;
+    addOnCredits: number;
+    rolloverCharacters: number;
+    rolloverCredits: number | null;
+    currentPlanDetails: {
+        name: string;
+        price: number;
+        credits: number;
+        is_Active: boolean;
+        query_limit: number;
+        pdfs_allowed: number;
+        pdf_size_limit: number;
+        character_limit: number;
+        remove_branding: boolean;
+        priority_support: boolean;
+        webpages_allowed: number;
+        ai_powered_chatbot: boolean;
+        custom_knowledge_base: boolean;
+        knowledgebase_sources: number;
+        rollover_unused_queries: boolean;
+        customization_of_chatbot: string;
+        future_addons_integrations: boolean;
+        is_active: boolean;
+    };
+    planExpiryDate: string;
+    planStartDate: string;
+    cancelledStatus: boolean;
+    cancelledAt: string | null;
+    gracePeriod: string | null;
+    planUpdatedTo: string | null;
+    waitlistUser: any | null;
+}
+
 const API_BASE_URL = 'https://api.websitechat.in';
 
 // Get stored auth token
@@ -330,6 +372,43 @@ export const getHeatMap = async (days: string = '7d'): Promise<HeatMapData[] | n
         console.error('getHeatMap - Failed to fetch heat map data:', err);
         if (axios.isAxiosError(err)) {
             console.error('getHeatMap - Axios error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message
+            });
+        }
+        return null;
+    }
+};
+
+// Get usage data
+export const getUsageData = async (): Promise<UsageData | null> => {
+    try {
+        const token: string | null = await getAuthToken();
+        console.log('getUsageData - Token:', token ? 'Token exists' : 'No token found');
+        console.log('getUsageData - Making API request to:', `${API_BASE_URL}/plans/v2/characters-usage-and-credit-usage`);
+        
+        const response = await axios.get(`${API_BASE_URL}/plans/v2/characters-usage-and-credit-usage`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('getUsageData - Response status:', response.status);
+        console.log('getUsageData - Full response:', JSON.stringify(response.data, null, 2));
+        
+        if (response.data.status && response.data) {
+            console.log('getUsageData - Data extracted successfully');
+            return response.data;
+        } else {
+            console.log('getUsageData - No data in response');
+            return null;
+        }
+    } catch (err) {
+        console.error('getUsageData - Failed to fetch usage data:', err);
+        if (axios.isAxiosError(err)) {
+            console.error('getUsageData - Axios error details:', {
                 status: err.response?.status,
                 statusText: err.response?.statusText,
                 data: err.response?.data,
