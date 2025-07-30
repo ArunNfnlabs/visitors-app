@@ -231,6 +231,13 @@ export default function VisitorDetailScreen() {
         );
     };
 
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#6c7ae0" />
+            </View>
+        );
+    }
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}

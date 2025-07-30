@@ -1,10 +1,29 @@
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export default function TabLayout() {
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('USER_TOKEN');
+        setToken(storedToken);
+      } catch (error) {
+        console.error('Error fetching token:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchToken();
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
@@ -34,6 +53,8 @@ export default function TabLayout() {
           shadowOpacity: 0.1,
           shadowRadius: 4,
           elevation: 8,
+          // Hide tab bar when no token
+          display: (isLoading || !token) ? 'none' : 'flex',
         },
         tabBarItemStyle: {
           paddingVertical: 4,

@@ -6,6 +6,8 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
+    Clipboard,
     FlatList,
     Image,
     ListRenderItemInfo,
@@ -154,6 +156,20 @@ export default function VisitorsListScreen() {
         await logout();
     };
 
+    const copyEmail = async (email: string) => {
+        if (!email || email === 'N/A') {
+            Alert.alert('No Email', 'No email address available to copy.');
+            return;
+        }
+        
+        try {
+            await Clipboard.setString(email);
+            Alert.alert('Copied!', 'Email address copied to clipboard.');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to copy email address.');
+        }
+    };
+
     // Fix: Use a consistent key for the avatar color, even for fallback "V"
     const renderVisitorCard = ({ item }: ListRenderItemInfo<Visitor>) => {
         // If name is missing or empty, use id as key for color, so "V" fallback is colored per id
@@ -203,6 +219,14 @@ export default function VisitorsListScreen() {
                         <View style={styles.infoRow}>
                             <Icon name="email" size={14} color="#999" style={styles.infoIcon} />
                             <Text style={styles.infoText}>{item?.email ?? 'N/A'}</Text>
+                            {item?.email && item.email !== 'N/A' && (
+                                <TouchableOpacity
+                                    style={styles.copyButton}
+                                    onPress={() => copyEmail(item.email!)}
+                                >
+                                    <Icon name="content-copy" size={16} color="#007AFF" />
+                                </TouchableOpacity>
+                            )}
                         </View>
                         <View style={styles.infoRow}>
                             <Icon name="phone" size={14} color="#999" style={styles.infoIcon} />
@@ -558,5 +582,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#f5f5f5',
         borderRadius: 50,
+    },
+    copyButton: {
+        marginLeft: 8,
+        padding: 4,
     },
 });
