@@ -26,7 +26,7 @@ export interface User {
     updatedAt: string;
 }
 
-const API_BASE_URL = 'https://api.websitechat.in/v1';
+const API_BASE_URL = 'https://api-uat.websitechat.in/v1';
 
 export const getVisitors = async ({
     page = 1,
@@ -43,7 +43,7 @@ export const getVisitors = async ({
 }): Promise<Visitor[]> => {
     try {
         const token: string | null = await AsyncStorage.getItem('USER_TOKEN');
-        const response = await axios.get(`https://api.websitechat.in/users/get-user`, {
+        const response = await axios.get(`https://api-uat.websitechat.in/users/get-user`, {
             params: {
                 search,
                 page,

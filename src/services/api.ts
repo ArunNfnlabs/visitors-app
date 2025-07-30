@@ -8,6 +8,8 @@ export interface Visitor {
     phone: string;
     location: string;
     lastSeenTime: string;
+    chatbotName: string;
+    avatar_url: string;
 }
 
 export interface User {
@@ -83,7 +85,16 @@ export interface UsageData {
     waitlistUser: any | null;
 }
 
-const API_BASE_URL = 'https://api.websitechat.in';
+export interface ChatbotDetails {
+    is_active: boolean;
+    websiteLink: string;
+    chatbot_name: string;
+    updated_at: string;
+    visitors_count: number;
+    chatbotLogo: string;
+}
+
+const API_BASE_URL = 'https://api-uat.websitechat.in';
 
 // Get stored auth token
 const getAuthToken = async (): Promise<string | null> => {
@@ -139,6 +150,8 @@ export const getVisitors = async ({
         const processedVisitors = await Promise.all(
             visitors.map(async (v: any) => {
                 let firstMessage = '';
+                let chatbotName = '';
+                let avatar_url = '';
                 
                 // Try to fetch the first message for this visitor
                 try {
@@ -150,6 +163,8 @@ export const getVisitors = async ({
                     });
                     
                     const chats = chatResponse.data?.data?.chats || [];
+                    chatbotName = chatResponse.data?.data?.chatbotConfig?.chatbot_name || 'N/A';
+                    avatar_url = chatResponse.data?.data?.chatbotConfig?.avatar_url || 'N/A';
                     if (chats.length > 0) {
                         firstMessage = chats[0].question || '';
                     }
@@ -165,6 +180,8 @@ export const getVisitors = async ({
                     location: v.userDetails?.location || 'N/A',
                     lastSeenTime: formatLastSeen(v.startedAt),
                     firstMessage: firstMessage,
+                    chatbotName: chatbotName,
+                    avatar_url: avatar_url,
                 };
             })
         );
@@ -409,6 +426,43 @@ export const getUsageData = async (): Promise<UsageData | null> => {
         console.error('getUsageData - Failed to fetch usage data:', err);
         if (axios.isAxiosError(err)) {
             console.error('getUsageData - Axios error details:', {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message
+            });
+        }
+        return null;
+    }
+};
+
+// Get chatbot details
+export const getChatbotDetails = async (chatbotId: string): Promise<ChatbotDetails | null> => {
+    try {
+        const token: string | null = await getAuthToken();
+        console.log('getChatbotDetails - Token:', token ? 'Token exists' : 'No token found');
+        console.log('getChatbotDetails - Making API request to:', `${API_BASE_URL}/chatbot/v1/chatbot-details/${chatbotId}`);
+        
+        const response = await axios.get(`${API_BASE_URL}/chatbot/v1/chatbot-details/${chatbotId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('getChatbotDetails - Response status:', response.status);
+        console.log('getChatbotDetails - Full response:', JSON.stringify(response.data, null, 2));
+        
+        if (response.data.status && response.data.data) {
+            console.log('getChatbotDetails - Data extracted successfully');
+            return response.data.data;
+        } else {
+            console.log('getChatbotDetails - No data in response');
+            return null;
+        }
+    } catch (err) {
+        console.error('getChatbotDetails - Failed to fetch chatbot details:', err);
+        if (axios.isAxiosError(err)) {
+            console.error('getChatbotDetails - Axios error details:', {
                 status: err.response?.status,
                 statusText: err.response?.statusText,
                 data: err.response?.data,

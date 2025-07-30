@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 
                 return { success: true };
             } else {
-                console.log('Making real API call to:', 'https://api.websitechat.in/users/login');
+                console.log('Making real API call to:', 'https://api-uat.websitechat.in/users/login');
                 // Real API call with correct endpoint and format
                 const requestBody = {
                     user_details: {
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
                 console.log('Request body:', JSON.stringify(requestBody, null, 2));
                 
-                const response = await fetch("https://api.websitechat.in/users/login", {
+                const response = await fetch("https://api-uat.websitechat.in/users/login", {
                     method: "POST",
                     headers: { 
                         "Content-Type": "application/json" 

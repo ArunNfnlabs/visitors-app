@@ -1,11 +1,10 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ChatMetricsChart from '../../src/components/ChatMetricsChart';
-import Header from '../../src/components/Header';
 import HeatMapChart from '../../src/components/HeatMapChart';
-import { getUsageData, getUser, getVisitors, logoutUser, UsageData, User, Visitor } from '../../src/services/api';
+import { ChatbotDetails, getChatbotDetails, getUsageData, getUser, getVisitors, UsageData, User, Visitor } from '../../src/services/api';
 import LoginScreen from '../signin';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +15,7 @@ export default function ChatScreen() {
     const [loading, setLoading] = useState(true);
     const [usageData, setUsageData] = useState<UsageData | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [chatbotDetails, setChatbotDetails] = useState<ChatbotDetails | null>(null);
     const [showSidebar, setShowSidebar] = useState(false);
     const [search, setSearch] = useState('');
     const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent');
@@ -27,14 +27,16 @@ export default function ChatScreen() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [visitors, usage, userData] = await Promise.all([
+            const [visitors, usage, userData, chatbotData] = await Promise.all([
                 getVisitors({ limit: 3 }),
                 getUsageData(),
-                getUser()
+                getUser(),
+                getChatbotDetails('108') // Using the chatbot ID from the API endpoint
             ]);
             setRecentVisitors(visitors);
             setUsageData(usage);
             setUser(userData);
+            setChatbotDetails(chatbotData);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -54,7 +56,7 @@ export default function ChatScreen() {
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays === 1) return 'Yesterday';
-        
+
         return lastSeen.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -88,11 +90,11 @@ export default function ChatScreen() {
             </View>
         );
     }
-
+    console.log(usageData, "usageData");
     return (
         token ?
             <View style={styles.container}>
-                <Header
+                {/* <Header
                     user={user as any}
                     showSidebar={showSidebar}
                     setShowSidebar={setShowSidebar}
@@ -105,39 +107,53 @@ export default function ChatScreen() {
                         router.replace('/signin');
                     }}
                     router={router}
-                />
+                /> */}
                 <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                     {/* AI Assistant Card */}
                     <View style={styles.assistantCard}>
                         <View style={styles.assistantHeader}>
                             <View style={styles.assistantInfo}>
                                 <View style={styles.assistantIcon}>
-                                    <Icon name="smart-toy" size={24} color="#FFFFFF" />
+                                    <Image
+                                        source={{ uri: chatbotDetails?.chatbotLogo }}
+                                        style={styles.logoImage}
+                                        resizeMode="contain"
+                                    />
                                 </View>
-                                <View style={styles.assistantStatus}>
-                                    <View style={styles.statusIndicator} />
-                                    <Text style={styles.statusText}>Active</Text>
-                                </View>
+                                                            <View style={[styles.assistantStatus, { borderColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
+                                <View style={[styles.statusIndicator, { backgroundColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]} />
+                                <Text style={[styles.statusText, { color: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
+                                    {chatbotDetails?.is_active ? 'Active' : 'Inactive'}
+                                </Text>
+                            </View>
                             </View>
                             <View style={styles.creditsWidget}>
-                                <Icon name="monetization-on" size={20} color="#F59E0B" />
+                                <Icon name="credit-card" size={20} color="#F59E0B" />
                                 <Text style={styles.creditsText}>
                                     {usageData ? `${usageData.totalCreditsAvailable} Credits available` : 'Loading...'}
                                 </Text>
                             </View>
                         </View>
-                        
-                        <Text style={styles.assistantName}>AI Help Desk</Text>
-                        <Text style={styles.lastUpdate}>Last update : 22 Jul, 2025</Text>
-                        
+
+                        <Text style={styles.assistantName}>{chatbotDetails?.chatbot_name || 'AI Help Desk'}</Text>
+                        <Text style={styles.lastUpdate}>Last update : {chatbotDetails?.updated_at ? new Date(chatbotDetails.updated_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        }) : new Date().toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        })}</Text>
+
                         <View style={styles.assistantDetails}>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Website</Text>
-                                <Text style={styles.detailValue}>websitechat.in</Text>
+                                <Text style={styles.detailValue}>{chatbotDetails?.websiteLink || 'N/A'}</Text>
                             </View>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Number of Visitors</Text>
-                                <Text style={styles.detailValue}>47</Text>
+                                <Text style={styles.detailValue}>{chatbotDetails?.visitors_count || 0}</Text>
                             </View>
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Subscription</Text>
@@ -172,7 +188,7 @@ export default function ChatScreen() {
                     {/* Recent Visitors */}
                     <View style={styles.recentVisitorsContainer}>
                         <Text style={styles.recentVisitorsTitle}>RECENT VISITORS</Text>
-                        
+
                         {loading ? (
                             <View style={styles.loadingContainer}>
                                 <Text style={styles.loadingText}>Loading visitors...</Text>
@@ -186,11 +202,11 @@ export default function ChatScreen() {
                                         </View>
                                         <View style={styles.visitorInfo}>
                                             <Text style={styles.visitorName}>{visitor.name}</Text>
-                                            <Text style={styles.visitorTime}>{formatLastSeen(visitor.lastSeenTime)}</Text>
+                                            {/* <Text style={styles.visitorTime}>{formatLastSeen(visitor.lastSeenTime)}</Text> */}
                                         </View>
                                     </View>
                                 ))}
-                                
+
                                 <TouchableOpacity style={styles.seeAllButton} onPress={handleSeeAllChats}>
                                     <Icon name="chat-bubble-outline" size={16} color="#475569" />
                                     <Text style={styles.seeAllText}>See all chats</Text>
@@ -211,7 +227,8 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#EDEFF3',
+        paddingTop: 46,
     },
     scrollView: {
         flex: 1,
@@ -247,10 +264,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     assistantIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FF6B35',
+        // width: 40,
+        // height: 40,
+        // borderRadius: 20,
+        // backgroundColor: '#FF6B35',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -258,6 +275,11 @@ const styles = StyleSheet.create({
     assistantStatus: {
         flexDirection: 'row',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#10B981',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
     statusIndicator: {
         width: 8,
@@ -270,6 +292,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#10B981',
         fontWeight: '600',
+        fontFamily: 'inter',
     },
     creditsWidget: {
         borderRadius: 12,
@@ -411,5 +434,9 @@ const styles = StyleSheet.create({
     noVisitorsText: {
         fontSize: 14,
         color: '#64748B',
+    },
+    logoImage: {
+        width: 30,
+        height: 30,
     },
 });

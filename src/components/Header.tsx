@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     headerWrapper: {
         position: 'relative',
         backgroundColor: '#EDEFF3',
+        paddingTop: 46,
     },
     headerContainer: {
         backgroundColor: '#EDEFF3',

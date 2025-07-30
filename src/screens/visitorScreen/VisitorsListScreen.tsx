@@ -174,14 +174,18 @@ export default function VisitorsListScreen() {
 
                         <View style={styles.visitorInfo}>
                             <Text style={styles.visitorName}>{item?.name ?? 'Visitor'}</Text>
-                            {item?.firstMessage && (
+                            {item?.firstMessage && item?.firstMessage.length > 0 && item?.firstMessage !== 'N/A' ? (
                                 <View style={styles.infoRow}>
                                     <Icon name="chat" size={14} color="#999" style={{ position: 'relative', top: 2, ...styles.infoIcon }} />
                                     <Text style={styles.infoText}>
                                         {item.firstMessage.length > 20
                                             ? `${item.firstMessage.substring(0, 20)}...`
-                                            : item.firstMessage}
+                                            : item.firstMessage || 'N/A'}
                                     </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.infoText}>N/A</Text>
                                 </View>
                             )}
 
