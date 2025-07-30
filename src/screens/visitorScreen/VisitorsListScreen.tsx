@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Clipboard,
     FlatList,
@@ -63,6 +62,53 @@ type Visitor = {
 };
 
 const PAGE_SIZE = 30;
+
+// --- SKELETON LOADER COMPONENTS ---
+const Skeleton = ({ width, height, borderRadius = 4, style = {} }: { width: number | string, height: number, borderRadius?: number, style?: any }) => (
+    <View
+        style={[
+            {
+                width,
+                height,
+                borderRadius,
+                backgroundColor: '#e0e0e0',
+                marginBottom: 6,
+                overflow: 'hidden',
+            },
+            style,
+        ]}
+    />
+);
+
+const SkeletonVisitorCard = () => (
+    <View style={styles.visitorCardWrapper}>
+        <View style={styles.visitorCardHome}>
+            <View style={styles.visitorCard}>
+                <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                    <Skeleton width="60%" height={16} borderRadius={6} />
+                    <Skeleton width="80%" height={12} borderRadius={6} />
+                </View>
+                <View style={{ marginLeft: 10, alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <Skeleton width={60} height={14} borderRadius={6} />
+                </View>
+            </View>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16, width: '100%' }}>
+                <Skeleton width="90%" height={12} borderRadius={6} />
+                <Skeleton width="60%" height={12} borderRadius={6} />
+                <Skeleton width="40%" height={12} borderRadius={6} />
+            </View>
+        </View>
+    </View>
+);
+
+const SkeletonList = ({ count = 6 }: { count?: number }) => (
+    <View>
+        {Array.from({ length: count }).map((_, idx) => (
+            <SkeletonVisitorCard key={idx} />
+        ))}
+    </View>
+);
 
 export default function VisitorsListScreen() {
     const [visitors, setVisitors] = useState<Visitor[]>([]);
@@ -161,7 +207,7 @@ export default function VisitorsListScreen() {
             Alert.alert('No Email', 'No email address available to copy.');
             return;
         }
-        
+
         try {
             await Clipboard.setString(email);
             Alert.alert('Copied!', 'Email address copied to clipboard.');
@@ -245,12 +291,15 @@ export default function VisitorsListScreen() {
 
     // Remove handleSelectSortOrder and renderSortModal, not needed anymore
 
+    // --- Animated visitor icons in all directions, opacity 20% ---
     const renderHeader = () => (
-        <View style={{ position: 'relative' }}>
+        <View style={{ position: 'relative', }}>
             <View style={styles.headerContainer}>
                 <View style={styles.welcomeSection}>
                     <View style={styles.welcomeText}>
-                        <Text style={styles.welcomeLabel}>Welcome <Text style={{ fontSize: 18 }}>🫡</Text></Text>
+                        <Text style={styles.welcomeLabel}>
+                            Welcome <Text style={{ fontSize: 18 }}>🫡</Text>
+                        </Text>
                         <Text style={styles.userName}>{user?.name}</Text>
                     </View>
                     <TouchableOpacity
@@ -293,11 +342,18 @@ export default function VisitorsListScreen() {
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}>
-                            <Icon
+                            {/* <Icon
                                 name={sortOrder === 'recent' ? 'arrow-downward' : 'arrow-upward'}
                                 size={24}
                                 color="#333"
-                            />
+                            /> */}
+                            {sortOrder === 'recent' ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-down-narrow-wide-icon lucide-arrow-down-narrow-wide"><path d="m3 16 4 4 4-4" /><path d="M7 20V4" /><path d="M11 4h4" /><path d="M11 8h7" /><path d="M11 12h10" /></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-up-narrow-wide-icon lucide-arrow-up-narrow-wide"><path d="m3 8 4-4 4 4" /><path d="M7 4v16" /><path d="M11 12h4" /><path d="M11 16h7" /><path d="M11 20h10" /></svg>
+                            )}
+
+
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -319,10 +375,33 @@ export default function VisitorsListScreen() {
     );
 
     if (isLoading) {
+        // SKELETON LOADER for initial screen load
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                <ActivityIndicator size="large" color="#ff6b35" />
-            </View>
+            <SafeAreaView style={styles.container}>
+                <View style={{ flex: 1 }}>
+                    <View style={styles.headerContainer}>
+                        <View style={styles.welcomeSection}>
+                            <View style={styles.welcomeText}>
+                                <Skeleton width={80} height={16} borderRadius={6} style={{ marginBottom: 4 }} />
+                                <Skeleton width={100} height={20} borderRadius={6} />
+                            </View>
+                            <Skeleton width={40} height={40} borderRadius={20} style={{ marginLeft: 16 }} />
+                        </View>
+                    </View>
+                    <View style={styles.headerContainer2}>
+                        <View style={styles.menuSearchSection}>
+                            <Skeleton width="80%" height={40} borderRadius={8} />
+                            <Skeleton width={40} height={32} borderRadius={10} style={{ marginLeft: 12 }} />
+                        </View>
+                        <View style={styles.titleSection}>
+                            <Skeleton width={120} height={18} borderRadius={6} />
+                        </View>
+                    </View>
+                    <View style={styles.contentContainer}>
+                        <SkeletonList count={6} />
+                    </View>
+                </View>
+            </SafeAreaView>
         );
     }
     return (
@@ -331,31 +410,37 @@ export default function VisitorsListScreen() {
                 {renderHeader()}
 
                 <View style={styles.contentContainer}>
-                    {filteredVisitors.length === 0 && !loading &&  (
-                        <View style={styles.noVisitorsContainer}>
-                            {/* Fallback: Use an Icon instead of missing image */}
-                            <View style={styles.noVisitorsImageFallback}>
-                                <Icon name="group" size={64} color="#e0e0e0" />
-                            </View>
-                            <Text style={styles.noVisitorsText}>No visitors found</Text>
-                        </View>
-                    )}
-                    <FlatList
-                        data={filteredVisitors}
-                        renderItem={renderVisitorCard}
-                        keyExtractor={(item) => item.id}
-                        onEndReached={executeLoadMoreVisitors}
-                        onEndReachedThreshold={0.2}
-                        ListFooterComponent={
-                            loading && hasMore ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="large" color="#007AFF" />
-                                    <Text style={styles.loadingText}>Loading more visitors...</Text>
+                    {/* SKELETON LOADER for visitors list loading */}
+                    {loading && filteredVisitors.length === 0 ? (
+                        <SkeletonList count={6} />
+                    ) : (
+                        <>
+                            {filteredVisitors.length === 0 && !loading && (
+                                <View style={styles.noVisitorsContainer}>
+                                    {/* Fallback: Use an Icon instead of missing image */}
+                                    <View style={styles.noVisitorsImageFallback}>
+                                        <Icon name="group" size={64} color="#e0e0e0" />
+                                    </View>
+                                    <Text style={styles.noVisitorsText}>No visitors found</Text>
                                 </View>
-                            ) : null
-                        }
-                        showsVerticalScrollIndicator={false}
-                    />
+                            )}
+                            <FlatList
+                                data={filteredVisitors}
+                                renderItem={renderVisitorCard}
+                                keyExtractor={(item) => item.id}
+                                onEndReached={executeLoadMoreVisitors}
+                                onEndReachedThreshold={0.2}
+                                ListFooterComponent={
+                                    loading && hasMore && filteredVisitors.length > 0 ? (
+                                        <View style={{ marginTop: 8 }}>
+                                            <SkeletonList count={2} />
+                                        </View>
+                                    ) : null
+                                }
+                                showsVerticalScrollIndicator={false}
+                            />
+                        </>
+                    )}
                 </View>
             </SafeAreaView>
             : <LoginScreen />
