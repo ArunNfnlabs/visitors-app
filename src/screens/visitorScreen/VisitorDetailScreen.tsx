@@ -2,7 +2,6 @@ import { getVisitorChat } from '@/src/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Image,
     SafeAreaView,
     ScrollView,
@@ -12,6 +11,73 @@ import {
     View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
+// Skeleton Loader Component
+const SkeletonLoader = () => {
+    // 1 header, 3 chat bubbles (alternating bot/visitor)
+    return (
+        <SafeAreaView style={styles.container}>
+            {/* Header Skeleton */}
+            <View style={styles.header}>
+                <View style={[styles.backButton, { opacity: 0.3 }]}>
+                    <Icon name="arrow-back" size={24} color="#ccc" />
+                </View>
+                <View style={styles.headerContent}>
+                    <View style={[styles.headerAvatar, { backgroundColor: '#e0e0e0' }]} />
+                    <View style={styles.headerInfo}>
+                        <View style={{ width: 100, height: 16, backgroundColor: '#e0e0e0', borderRadius: 8, marginBottom: 6 }} />
+                        <View style={{ width: 60, height: 12, backgroundColor: '#e0e0e0', borderRadius: 6 }} />
+                    </View>
+                </View>
+            </View>
+            {/* Chat Skeletons */}
+            <ScrollView
+                style={styles.chatContainer}
+                contentContainerStyle={styles.chatContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Bot message skeleton */}
+                <View style={styles.messageContainer}>
+                    <View style={styles.botMessageContainer}>
+                        <View style={[styles.botAvatar, { backgroundColor: '#e0e0e0' }]} />
+                        <View style={styles.botMessageContent}>
+                            <View style={styles.botMessageHeader}>
+                                <View style={{ width: 60, height: 12, backgroundColor: '#e0e0e0', borderRadius: 6, marginRight: 8 }} />
+                                <View style={{ width: 40, height: 10, backgroundColor: '#e0e0e0', borderRadius: 5 }} />
+                            </View>
+                            <View style={[styles.messageBubble, styles.botMessageBubble, { backgroundColor: '#e0e0e0', minHeight: 24, width: 180 }]} />
+                        </View>
+                    </View>
+                </View>
+                {/* Visitor message skeleton */}
+                <View style={styles.messageContainer}>
+                    <View style={styles.visitorMessageContainer}>
+                        <View style={styles.visitorMessageContent}>
+                            <View style={styles.visitorMessageHeader}>
+                                <View style={{ width: 80, height: 10, backgroundColor: '#e0e0e0', borderRadius: 5, marginBottom: 4 }} />
+                            </View>
+                            <View style={[styles.messageBubble, styles.visitorMessageBubble, { backgroundColor: '#e0e0e0', minHeight: 24, width: 140 }]} />
+                        </View>
+                        <View style={[styles.visitorAvatar, { backgroundColor: '#e0e0e0' }]} />
+                    </View>
+                </View>
+                {/* Bot message skeleton */}
+                <View style={styles.messageContainer}>
+                    <View style={styles.botMessageContainer}>
+                        <View style={[styles.botAvatar, { backgroundColor: '#e0e0e0' }]} />
+                        <View style={styles.botMessageContent}>
+                            <View style={styles.botMessageHeader}>
+                                <View style={{ width: 60, height: 12, backgroundColor: '#e0e0e0', borderRadius: 6, marginRight: 8 }} />
+                                <View style={{ width: 40, height: 10, backgroundColor: '#e0e0e0', borderRadius: 5 }} />
+                            </View>
+                            <View style={[styles.messageBubble, styles.botMessageBubble, { backgroundColor: '#e0e0e0', minHeight: 24, width: 120 }]} />
+                        </View>
+                    </View>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
+};
 
 // Types updated to match API response (snake_case)
 type VisitorChat = {
@@ -232,11 +298,8 @@ export default function VisitorDetailScreen() {
     };
 
     if (isLoading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#6c7ae0" />
-            </View>
-        );
+        // Show skeleton loader until all data loads
+        return <SkeletonLoader />;
     }
     return (
         <SafeAreaView style={styles.container}>
@@ -275,21 +338,15 @@ export default function VisitorDetailScreen() {
             </View>
             
             {/* Chat Messages */}
-            {isLoading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#6c7ae0" />
-                </View>
-            ) : (
-                <ScrollView
-                    ref={scrollViewRef}
-                    style={styles.chatContainer}
-                    contentContainerStyle={styles.chatContent}
-                    showsVerticalScrollIndicator={false}
-                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                >
-                    {messages.map(renderMessage)}
-                </ScrollView>
-            )}
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.chatContainer}
+                contentContainerStyle={styles.chatContent}
+                showsVerticalScrollIndicator={false}
+                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            >
+                {messages.map(renderMessage)}
+            </ScrollView>
         </SafeAreaView>
     );
 }

@@ -9,6 +9,81 @@ import LoginScreen from '../signin';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Skeleton Loader Components
+const SkeletonBox = ({ width, height, borderRadius = 4, style = {} }: { width: number | string, height: number, borderRadius?: number, style?: any }) => (
+    <View
+        style={[
+            {
+                width,
+                height,
+                borderRadius,
+                backgroundColor: '#E5E7EB',
+                marginVertical: 4,
+                overflow: 'hidden',
+            },
+            style,
+        ]}
+    />
+);
+
+const AssistantCardSkeleton = () => (
+    <View style={styles.assistantCard}>
+        <View style={styles.assistantHeader}>
+            <View style={styles.assistantInfo}>
+                <SkeletonBox width={30} height={30} borderRadius={15} style={{ marginRight: 12 }} />
+                <SkeletonBox width={60} height={20} borderRadius={10} />
+            </View>
+            <SkeletonBox width={100} height={24} borderRadius={12} />
+        </View>
+        <SkeletonBox width={120} height={28} borderRadius={6} style={{ marginBottom: 4 }} />
+        <SkeletonBox width={160} height={16} borderRadius={6} style={{ marginBottom: 20 }} />
+        <View style={styles.assistantDetails}>
+            <View style={styles.detailRow}>
+                <SkeletonBox width={80} height={16} />
+                <SkeletonBox width={60} height={16} />
+            </View>
+            <View style={styles.detailRow}>
+                <SkeletonBox width={120} height={16} />
+                <SkeletonBox width={40} height={16} />
+            </View>
+            <View style={styles.detailRow}>
+                <SkeletonBox width={100} height={16} />
+                <SkeletonBox width={80} height={16} />
+            </View>
+            <View style={styles.detailRow}>
+                <SkeletonBox width={120} height={16} />
+                <SkeletonBox width={100} height={16} />
+            </View>
+            <View style={styles.detailRow}>
+                <SkeletonBox width={100} height={16} />
+                <SkeletonBox width={80} height={16} />
+            </View>
+        </View>
+    </View>
+);
+
+const ChartSkeleton = () => (
+    <View style={{ backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, padding: 20 }}>
+        <SkeletonBox width={'100%'} height={120} borderRadius={12} />
+    </View>
+);
+
+const VisitorsSkeleton = () => (
+    <View style={styles.recentVisitorsContainer}>
+        <SkeletonBox width={120} height={16} style={{ marginBottom: 16 }} />
+        {[1, 2, 3].map((_, idx) => (
+            <View key={idx} style={styles.visitorItem}>
+                <SkeletonBox width={40} height={40} borderRadius={20} style={{ marginRight: 12 }} />
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <SkeletonBox width={80} height={16} />
+                    <SkeletonBox width={60} height={12} />
+                </View>
+            </View>
+        ))}
+        <SkeletonBox width={120} height={32} borderRadius={8} style={{ marginTop: 8, alignSelf: 'center' }} />
+    </View>
+);
+
 export default function ChatScreen() {
     const router = useRouter();
     const [recentVisitors, setRecentVisitors] = useState<Visitor[]>([]);
@@ -90,7 +165,21 @@ export default function ChatScreen() {
             </View>
         );
     }
-    console.log(usageData, "usageData");
+
+    // Show skeleton loader until all data is loaded
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                    <AssistantCardSkeleton />
+                    <ChartSkeleton />
+                    <ChartSkeleton />
+                    <VisitorsSkeleton />
+                </ScrollView>
+            </View>
+        );
+    }
+
     return (
         token ?
             <View style={styles.container}>
@@ -120,12 +209,12 @@ export default function ChatScreen() {
                                         resizeMode="contain"
                                     />
                                 </View>
-                                                            <View style={[styles.assistantStatus, { borderColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
-                                <View style={[styles.statusIndicator, { backgroundColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]} />
-                                <Text style={[styles.statusText, { color: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
-                                    {chatbotDetails?.is_active ? 'Active' : 'Inactive'}
-                                </Text>
-                            </View>
+                                <View style={[styles.assistantStatus, { borderColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
+                                    <View style={[styles.statusIndicator, { backgroundColor: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]} />
+                                    <Text style={[styles.statusText, { color: chatbotDetails?.is_active ? '#10B981' : '#EF4444' }]}>
+                                        {chatbotDetails?.is_active ? 'Active' : 'Inactive'}
+                                    </Text>
+                                </View>
                             </View>
                             <View style={styles.creditsWidget}>
                                 <Icon name="credit-card" size={20} color="#F59E0B" />
@@ -189,11 +278,7 @@ export default function ChatScreen() {
                     <View style={styles.recentVisitorsContainer}>
                         <Text style={styles.recentVisitorsTitle}>RECENT VISITORS</Text>
 
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>Loading visitors...</Text>
-                            </View>
-                        ) : recentVisitors.length > 0 ? (
+                        {recentVisitors.length > 0 ? (
                             <>
                                 {recentVisitors.map((visitor, index) => (
                                     <View key={visitor.id} style={styles.visitorItem}>
